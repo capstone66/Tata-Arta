@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { AuthController } from "../auth/auth.controller.ts";
+import { AuthController } from "./auth.controller.ts";
 import {
   LoginRequestSchema,
   RegisterChildRequestSchema,
   RegisterRequestSchema,
-} from "../auth/auth.dto.ts";
+} from "./auth.dto.ts";
 import { validate } from "../../middleware/validate.middleware.ts";
 import { authMiddleware } from "../../middleware/auth.middleware.ts";
 
