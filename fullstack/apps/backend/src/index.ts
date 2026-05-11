@@ -3,18 +3,23 @@ import express, {
   type Request,
   type Response,
 } from "express";
-import authRouter from "./src/api/router/auth.router.ts";
 import cookieParser from "cookie-parser";
+import cors from "cors";
+import rootRouter from "./api/index.router";
 
 const app = express();
 const PORT = process.env.PORT;
+const FRONTEND = process.env.FRONTEND;
 
-app.get("/", (req, res) => {
-  res.send("hello from here 3");
-});
 app.use(express.json());
 app.use(cookieParser());
-app.use("/api/auth", authRouter);
+app.use(
+  cors({
+    origin: FRONTEND,
+    credentials: true,
+  }),
+);
+app.use("/api", rootRouter);
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error(err);

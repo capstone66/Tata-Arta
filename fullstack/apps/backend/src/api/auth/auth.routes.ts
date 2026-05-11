@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { validate } from "../middleware/validate.middleware.ts";
+import { AuthController } from "../auth/auth.controller.ts";
 import {
   LoginRequestSchema,
   RegisterChildRequestSchema,
   RegisterRequestSchema,
 } from "../auth/auth.dto.ts";
-import { AuthController } from "../auth/auth.controller.ts";
-import { authMiddleware } from "../middleware/auth.middleware.ts";
+import { validate } from "../../middleware/validate.middleware.ts";
+import { authMiddleware } from "../../middleware/auth.middleware.ts";
 
 const router = Router();
 
