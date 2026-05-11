@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AI-Powered Financial Analytics for UMKM
 
 ## Overview
@@ -336,6 +335,3 @@ Pengembangan selanjutnya:
 
 AI-Powered Financial Analytics for UMKM
 Developed using Python, Streamlit, and Data Science workflow.
-=======
-# Tata-Arta
->>>>>>> 2ef760e5520ad1326315ac6b0e334945552a9218
