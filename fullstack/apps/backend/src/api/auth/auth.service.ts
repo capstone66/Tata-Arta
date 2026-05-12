@@ -9,13 +9,17 @@ import type {
 import { prisma } from "../../../prisma/prisma.client.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET tidak ditemukan di env");
+}
+const DUMMY_HASH = await bcrypt.hash("dummy_password", 10);
 
 export const AuthService = {
   login: async (
     payload: LoginRequest,
   ): Promise<[AuthResponse | null, Error | null]> => {
     try {
-      const parentUser = await prisma.user.findUnique({
+      const parentUser = await prisma.parentUser.findUnique({
         where: {
           email: payload.email,
         },
@@ -26,17 +30,18 @@ export const AuthService = {
         : null;
 
       const foundUser = parentUser || childUser;
+      const hashToCompare = foundUser?.password ?? DUMMY_HASH;
+      const isMatch = await bcrypt.compare(payload.password, hashToCompare);
 
-      if (!foundUser) {
-        return [null, new Error("User tidak ditemukan")];
+      if (!isMatch || !foundUser) {
+        return [null, new Error("Email atau password salah")];
       }
 
-      const isMatch = await bcrypt.compare(
-        payload.password,
-        foundUser.password,
-      );
-      if (!isMatch) {
-        return [null, new Error("Email atau password salah")];
+      if ("isActive" in foundUser && !foundUser.isActive) {
+        return [
+          null,
+          new Error("Akun tidak aktif, silahkan hubungi pemilik usaha"),
+        ];
       }
 
       const token = jwt.sign(
@@ -67,7 +72,7 @@ export const AuthService = {
     payload: RegisterRequest,
   ): Promise<[string | null, Error | null]> => {
     try {
-      const existing = await prisma.user.findUnique({
+      const existing = await prisma.parentUser.findUnique({
         where: { email: payload.email },
       });
 
@@ -76,11 +81,11 @@ export const AuthService = {
       }
 
       const hashedpassword = await bcrypt.hash(payload.password, 10);
-      const newUser = await prisma.user.create({
+      const newUser = await prisma.parentUser.create({
         data: {
           email: payload.email,
           password: hashedpassword,
-          role: payload.role,
+          role: "ADMIN",
           userProfile: {
             create: { name: payload.name },
           },
@@ -98,14 +103,23 @@ export const AuthService = {
     parentId: string,
   ): Promise<[string | null, Error | null]> => {
     try {
-      const existingUser = await prisma.user.findUnique({
+      const parent = await prisma.parentUser.findUnique({
+        where: { id: parentId },
+      });
+
+      if (!parent) {
+        return [null, new Error("Parent tidak ditemukan")];
+      }
+
+      const existingParent = await prisma.parentUser.findUnique({
         where: { email: payload.email },
       });
+
       const existingChild = await prisma.childUser.findUnique({
         where: { email: payload.email },
       });
 
-      if (existingUser || existingChild) {
+      if (existingParent || existingChild) {
         return [null, new Error("Email sudah terdaftar")];
       }
 
@@ -113,9 +127,10 @@ export const AuthService = {
 
       const newChild = await prisma.childUser.create({
         data: {
-          ...payload,
+          name: payload.name,
           email: payload.email,
           password: hashedpassword,
+          role: "USER",
           parent: {
             connect: { id: parentId },
           },
