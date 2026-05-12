@@ -51,11 +51,11 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  User: 'User',
+  ParentUser: 'ParentUser',
   ChildUser: 'ChildUser',
   UserProfile: 'UserProfile',
-  Categories: 'Categories',
-  Items: 'Items',
+  Category: 'Category',
+  Product: 'Product',
   Order: 'Order',
   OrderItem: 'OrderItem'
 } as const
@@ -76,7 +76,7 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
-export const UserScalarFieldEnum = {
+export const ParentUserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   password: 'password',
@@ -84,7 +84,7 @@ export const UserScalarFieldEnum = {
   createdAt: 'createdAt'
 } as const
 
-export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+export type ParentUserScalarFieldEnum = (typeof ParentUserScalarFieldEnum)[keyof typeof ParentUserScalarFieldEnum]
 
 
 export const ChildUserScalarFieldEnum = {
@@ -109,15 +109,15 @@ export const UserProfileScalarFieldEnum = {
 export type UserProfileScalarFieldEnum = (typeof UserProfileScalarFieldEnum)[keyof typeof UserProfileScalarFieldEnum]
 
 
-export const CategoriesScalarFieldEnum = {
+export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name'
 } as const
 
-export type CategoriesScalarFieldEnum = (typeof CategoriesScalarFieldEnum)[keyof typeof CategoriesScalarFieldEnum]
+export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
-export const ItemsScalarFieldEnum = {
+export const ProductScalarFieldEnum = {
   id: 'id',
   name: 'name',
   stock: 'stock',
@@ -127,7 +127,7 @@ export const ItemsScalarFieldEnum = {
   userId: 'userId'
 } as const
 
-export type ItemsScalarFieldEnum = (typeof ItemsScalarFieldEnum)[keyof typeof ItemsScalarFieldEnum]
+export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
 
 
 export const OrderScalarFieldEnum = {
@@ -144,7 +144,7 @@ export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof Or
 export const OrderItemScalarFieldEnum = {
   id: 'id',
   itemId: 'itemId',
-  itemName: 'itemName',
+  productName: 'productName',
   price: 'price',
   quantity: 'quantity',
   orderId: 'orderId'

@@ -198,7 +198,7 @@ export type ChildUserWhereInput = {
   role?: Prisma.EnumRoleFilter<"ChildUser"> | $Enums.Role
   createdAt?: Prisma.DateTimeFilter<"ChildUser"> | Date | string
   parentId?: Prisma.StringFilter<"ChildUser"> | string
-  parent?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  parent?: Prisma.XOR<Prisma.ParentUserScalarRelationFilter, Prisma.ParentUserWhereInput>
 }
 
 export type ChildUserOrderByWithRelationInput = {
@@ -209,7 +209,7 @@ export type ChildUserOrderByWithRelationInput = {
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
-  parent?: Prisma.UserOrderByWithRelationInput
+  parent?: Prisma.ParentUserOrderByWithRelationInput
 }
 
 export type ChildUserWhereUniqueInput = Prisma.AtLeast<{
@@ -223,7 +223,7 @@ export type ChildUserWhereUniqueInput = Prisma.AtLeast<{
   role?: Prisma.EnumRoleFilter<"ChildUser"> | $Enums.Role
   createdAt?: Prisma.DateTimeFilter<"ChildUser"> | Date | string
   parentId?: Prisma.StringFilter<"ChildUser"> | string
-  parent?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  parent?: Prisma.XOR<Prisma.ParentUserScalarRelationFilter, Prisma.ParentUserWhereInput>
 }, "id" | "email">
 
 export type ChildUserOrderByWithAggregationInput = {
@@ -259,7 +259,7 @@ export type ChildUserCreateInput = {
   password: string
   role?: $Enums.Role
   createdAt?: Date | string
-  parent: Prisma.UserCreateNestedOneWithoutChildInput
+  parent: Prisma.ParentUserCreateNestedOneWithoutChildsInput
 }
 
 export type ChildUserUncheckedCreateInput = {
@@ -279,7 +279,7 @@ export type ChildUserUpdateInput = {
   password?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  parent?: Prisma.UserUpdateOneRequiredWithoutChildNestedInput
+  parent?: Prisma.ParentUserUpdateOneRequiredWithoutChildsNestedInput
 }
 
 export type ChildUserUncheckedUpdateInput = {
@@ -506,7 +506,7 @@ export type ChildUserSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   role?: boolean
   createdAt?: boolean
   parentId?: boolean
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["childUser"]>
 
 export type ChildUserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -517,7 +517,7 @@ export type ChildUserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   role?: boolean
   createdAt?: boolean
   parentId?: boolean
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["childUser"]>
 
 export type ChildUserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -528,7 +528,7 @@ export type ChildUserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   role?: boolean
   createdAt?: boolean
   parentId?: boolean
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["childUser"]>
 
 export type ChildUserSelectScalar = {
@@ -543,19 +543,19 @@ export type ChildUserSelectScalar = {
 
 export type ChildUserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "password" | "role" | "createdAt" | "parentId", ExtArgs["result"]["childUser"]>
 export type ChildUserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }
 export type ChildUserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }
 export type ChildUserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  parent?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  parent?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
 }
 
 export type $ChildUserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "ChildUser"
   objects: {
-    parent: Prisma.$UserPayload<ExtArgs>
+    parent: Prisma.$ParentUserPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -959,7 +959,7 @@ readonly fields: ChildUserFieldRefs;
  */
 export interface Prisma__ChildUserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  parent<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  parent<T extends Prisma.ParentUserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ParentUserDefaultArgs<ExtArgs>>): Prisma.Prisma__ParentUserClient<runtime.Types.Result.GetResult<Prisma.$ParentUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
