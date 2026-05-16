@@ -35,3 +35,15 @@ export interface StockAlert {
   status: 'kritis' | 'normal' | 'peringatan';
   icon: string;
 }
+
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  categoryColor: 'green' | 'blue' | 'gold' | 'red';
+  buyPrice: string;
+  sellPrice: string;
+  stock: number;
+  status: 'Normal' | 'Kritis';
+}
