@@ -1,1 +1,36 @@
-@import "tailwindcss"
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #1A2E0A;
+  --color-forest-mid: #243D0F;
+  --color-forest-rim: #2E5012;
+  --color-leaf: #6DB33F;
+  --color-leaf-light: #A3CF78;
+  --color-leaf-pale: #DFF0CC;
+  --color-cream: #F6F2EB;
+  --color-cream-2: #EDE8DF;
+  --color-cream-3: #E2DAD0;
+  --color-ink: #1C1A17;
+  --color-ink-2: #4A4540;
+  --color-ink-3: #8A857E;
+  --color-gold: #C8900A;
+  --color-gold-light: #FDF0D5;
+  --color-red: #B83232;
+  --color-red-light: #FCEAEA;
+  --color-blue: #1E4FA8;
+  --color-blue-light: #E8EEF8;
+  --color-surface: #FFFFFF;
+  
+  --spacing-sidebar: 230px;
+
+  --font-sans: 'Geist', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
+  --font-mono: 'Geist Mono', monospace;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-cream text-ink overflow-x-hidden;
+    font-size: 13px;
+  }
+}
