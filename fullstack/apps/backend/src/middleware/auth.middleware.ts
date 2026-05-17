@@ -1,41 +1,41 @@
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import type { Role } from "../../prisma/generated/enums";
+import { auth } from "../lib/auth";
+import { fromNodeHeaders } from "better-auth/node";
 
-interface UserPayload {
-  id: string;
-  role: Role;
-}
-
-export const authMiddleware = (
+export const authMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
-  if (!token) {
-    return res
-      .status(401)
-      .json({ status: "error", message: "Token tidak ditemukan" });
-  }
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as UserPayload;
-    req.user = {
-      id: decoded.id,
-      role: decoded.role,
-    };
-
-    next();
-  } catch (err) {
-    return res.status(403).json({
+  if (!session) {
+    return res.status(401).json({
       status: "error",
-      message: "Token tidak valid atau kadaluarsa",
+      message: "Token tidak ditemukan atau tidak valid",
     });
   }
+
+  // Cek isActive — field custom di User
+  if (!session.user.isActive) {
+    return res.status(403).json({
+      status: "error",
+      message: "Akun tidak aktif, silahkan hubungi pemilik usaha",
+    });
+  }
+
+  req.user = {
+    id: session.user.id,
+    role: session.user.role,
+    email: session.user.email,
+  };
+
+  next();
 };
 
-export const requireRole = (...roles: Role[]) => {
+export const requireRole = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
@@ -47,7 +47,7 @@ export const requireRole = (...roles: Role[]) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         status: "error",
-        message: "Unauthorized: anda tidak memiliki izin untuk aksi ini",
+        message: "Forbidden: anda tidak memiliki izin untuk aksi ini",
       });
     }
 

@@ -12,17 +12,6 @@ import {
 } from "../../middleware/auth.middleware.ts";
 
 const router = Router();
-
-router.post("/login", validate(LoginRequestSchema), AuthController.login);
-
-router.post(
-  "/register",
-  validate(RegisterRequestSchema),
-  AuthController.register,
-);
-
-router.post("/logout", AuthController.logout);
-
 router.post(
   "/children",
   authMiddleware,
