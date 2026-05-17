@@ -166,14 +166,14 @@ export type UserProfileWhereInput = {
   id?: Prisma.StringFilter<"UserProfile"> | string
   name?: Prisma.StringFilter<"UserProfile"> | string
   userId?: Prisma.StringFilter<"UserProfile"> | string
-  user?: Prisma.XOR<Prisma.ParentUserScalarRelationFilter, Prisma.ParentUserWhereInput>
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
 
 export type UserProfileOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  user?: Prisma.ParentUserOrderByWithRelationInput
+  user?: Prisma.UserOrderByWithRelationInput
 }
 
 export type UserProfileWhereUniqueInput = Prisma.AtLeast<{
@@ -183,7 +183,7 @@ export type UserProfileWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.UserProfileWhereInput[]
   NOT?: Prisma.UserProfileWhereInput | Prisma.UserProfileWhereInput[]
   name?: Prisma.StringFilter<"UserProfile"> | string
-  user?: Prisma.XOR<Prisma.ParentUserScalarRelationFilter, Prisma.ParentUserWhereInput>
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }, "id" | "userId">
 
 export type UserProfileOrderByWithAggregationInput = {
@@ -207,7 +207,7 @@ export type UserProfileScalarWhereWithAggregatesInput = {
 export type UserProfileCreateInput = {
   id?: string
   name: string
-  user: Prisma.ParentUserCreateNestedOneWithoutUserProfileInput
+  user: Prisma.UserCreateNestedOneWithoutUserProfileInput
 }
 
 export type UserProfileUncheckedCreateInput = {
@@ -219,7 +219,7 @@ export type UserProfileUncheckedCreateInput = {
 export type UserProfileUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  user?: Prisma.ParentUserUpdateOneRequiredWithoutUserProfileNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutUserProfileNestedInput
 }
 
 export type UserProfileUncheckedUpdateInput = {
@@ -342,21 +342,21 @@ export type UserProfileSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   id?: boolean
   name?: boolean
   userId?: boolean
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userProfile"]>
 
 export type UserProfileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
   userId?: boolean
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userProfile"]>
 
 export type UserProfileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
   userId?: boolean
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userProfile"]>
 
 export type UserProfileSelectScalar = {
@@ -367,19 +367,19 @@ export type UserProfileSelectScalar = {
 
 export type UserProfileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "userId", ExtArgs["result"]["userProfile"]>
 export type UserProfileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 export type UserProfileIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 export type UserProfileIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.ParentUserDefaultArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 
 export type $UserProfilePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserProfile"
   objects: {
-    user: Prisma.$ParentUserPayload<ExtArgs>
+    user: Prisma.$UserPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -779,7 +779,7 @@ readonly fields: UserProfileFieldRefs;
  */
 export interface Prisma__UserProfileClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  user<T extends Prisma.ParentUserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ParentUserDefaultArgs<ExtArgs>>): Prisma.Prisma__ParentUserClient<runtime.Types.Result.GetResult<Prisma.$ParentUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
