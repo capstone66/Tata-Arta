@@ -32,10 +32,6 @@ const NAV_KARYAWAN: MenuItem[] = [
   { id: 'section-3', label: '', section: 'Transaksi' },
   { id: 'transaksi', icon: '🛒', label: 'Catat Transaksi' },
   { id: 'laporan', icon: '📋', label: 'Laporan Penjualan' },
-  { id: 'section-4', label: '', section: 'Terbatas' },
-  { id: 'analisis', icon: '📊', label: 'Analisis Penjualan', locked: true },
-  { id: 'prediksi', icon: '🔮', label: 'Prediksi Harga', locked: true },
-  { id: 'rekomendasi', icon: '💡', label: 'Rekomendasi Stok', locked: true },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ role, userFullName }) => {

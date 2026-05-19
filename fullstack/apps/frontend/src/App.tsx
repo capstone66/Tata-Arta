@@ -3,6 +3,12 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { KatalogBarangPage } from './pages/KatalogBarangPage';
 import { InputStokPage } from './pages/InputStokPage';
+import { CatatTransaksiPage } from './pages/CatatTransaksiPage';
+import { LaporanPenjualanPage } from './pages/LaporanPenjualanPage';
+import { KeuanganPage } from './pages/KeuanganPage';
+import { AnalisisPenjualanPage } from './pages/AnalisisPenjualanPage';
+import { PrediksiHargaPage } from './pages/PrediksiHargaPage';
+import { RekomendasiStokPage } from './pages/RekomendasiStokPage';
 import type { Role } from './types';
 
 const App = () => {
@@ -24,12 +30,12 @@ const App = () => {
           {/* Mock routes for other menu items to avoid 404s while clicking */}
           <Route path="katalog" element={<KatalogBarangPage />} />
           <Route path="input-barang" element={<InputStokPage />} />
-          <Route path="transaksi" element={<div className="p-4">Catat Transaksi Page</div>} />
-          <Route path="laporan" element={<div className="p-4">Laporan Penjualan Page</div>} />
-          <Route path="keuangan" element={<div className="p-4">Keuangan Page</div>} />
-          <Route path="analisis" element={<div className="p-4">Analisis Penjualan Page</div>} />
-          <Route path="prediksi" element={<div className="p-4">Prediksi Harga Page</div>} />
-          <Route path="rekomendasi" element={<div className="p-4">Rekomendasi Stok Page</div>} />
+          <Route path="transaksi" element={<CatatTransaksiPage />} />
+          <Route path="laporan" element={<LaporanPenjualanPage />} />
+          <Route path="keuangan" element={<KeuanganPage />} />
+          <Route path="analisis" element={<AnalisisPenjualanPage />} />
+          <Route path="prediksi" element={<PrediksiHargaPage />} />
+          <Route path="rekomendasi" element={<RekomendasiStokPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
