@@ -2,203 +2,119 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# =========================
-# PAGE CONFIG
-# =========================
-
+# Page config
 st.set_page_config(
     page_title='UMKM Analytics Dashboard',
     layout='wide'
 )
 
-# =========================
-# LOAD DATA
-# =========================
-
+# Load data
 products = pd.read_csv(
-    'data/processed/products_featured.csv'
+    'data-science/data/processed/products_featured.csv'
 )
 
 transactions = pd.read_csv(
-    'data/processed/transactions.csv'
+    'data-science/data/processed/transactions.csv'
 )
 
-# =========================
-# TITLE
-# =========================
-
-st.title('AI-Powered Financial Analytics for UMKM')
-
-st.markdown(
-    'Dashboard analitik penjualan dan inventory UMKM'
+daily_kpi = pd.read_csv(
+    'data-science/data/processed/daily_kpi.csv'
 )
 
-# =========================
-# KPI SECTION
-# =========================
+# Title
+st.title('UMKM Analytics Dashboard')
 
-total_revenue = transactions['total'].sum()
-
-total_profit = transactions['profit'].sum()
-
-total_transactions = len(transactions)
-
-total_products = len(products)
-
+# KPI
 col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.metric(
-        'Total Revenue',
-        f'Rp {total_revenue:,.0f}'
-    )
+col1.metric(
+    'Total Revenue',
+    f"Rp {daily_kpi['total_revenue'].sum():,.0f}"
+)
 
-with col2:
-    st.metric(
-        'Total Profit',
-        f'Rp {total_profit:,.0f}'
-    )
+col2.metric(
+    'Total Profit',
+    f"Rp {daily_kpi['total_profit'].sum():,.0f}"
+)
 
-with col3:
-    st.metric(
-        'Transactions',
-        f'{total_transactions:,}'
-    )
+col3.metric(
+    'Total Expense',
+    f"Rp {daily_kpi['total_expense'].sum():,.0f}"
+)
 
-with col4:
-    st.metric(
-        'Products',
-        f'{total_products:,}'
-    )
+col4.metric(
+    'Transactions',
+    f"{daily_kpi['total_transactions'].sum():,.0f}"
+)
 
-# =========================
-# TOP PRODUCTS
-# =========================
+# Revenue Trend
+st.subheader('Revenue Trend')
 
+fig_revenue = px.line(
+    daily_kpi,
+    x='tanggal',
+    y='total_revenue',
+    title='Daily Revenue Trend'
+)
+
+st.plotly_chart(fig_revenue)
+
+# Payment Method
+st.subheader('Payment Method Distribution')
+
+payment_summary = (
+    transactions['payment_method']
+    .value_counts()
+    .reset_index()
+)
+
+payment_summary.columns = [
+    'payment_method',
+    'count'
+]
+
+fig_payment = px.pie(
+    payment_summary,
+    names='payment_method',
+    values='count'
+)
+
+st.plotly_chart(fig_payment)
+
+# Top Products
 st.subheader('Top Selling Products')
 
 top_products = (
-    transactions
-    .groupby('nama_produk')['qty']
-    .sum()
-    .sort_values(ascending=False)
+    products
+    .sort_values(
+        by='total_sales',
+        ascending=False
+    )
     .head(10)
-    .reset_index()
 )
 
-fig_top = px.bar(
+fig_products = px.bar(
     top_products,
-    x='nama_produk',
-    y='qty',
+    x='nama',
+    y='total_sales',
     title='Top Selling Products'
 )
 
-st.plotly_chart(
-    fig_top,
-    use_container_width=True
-)
+st.plotly_chart(fig_products)
 
-# =========================
-# MONTHLY SALES
-# =========================
-
-st.subheader('Monthly Sales Trend')
-
-transactions['tanggal'] = pd.to_datetime(
-    transactions['tanggal']
-)
-
-monthly_sales = (
-    transactions
-    .groupby(
-        transactions['tanggal']
-        .dt.to_period('M')
-    )['total']
-    .sum()
-    .reset_index()
-)
-
-monthly_sales['tanggal'] = (
-    monthly_sales['tanggal']
-    .astype(str)
-)
-
-fig_sales = px.line(
-    monthly_sales,
-    x='tanggal',
-    y='total',
-    title='Monthly Revenue Trend'
-)
-
-st.plotly_chart(
-    fig_sales,
-    use_container_width=True
-)
-
-# =========================
-# CATEGORY PERFORMANCE
-# =========================
-
-st.subheader('Category Performance')
-
-category_sales = (
-    transactions
-    .groupby('kategori')['total']
-    .sum()
-    .reset_index()
-)
-
-fig_category = px.pie(
-    category_sales,
-    names='kategori',
-    values='total',
-    title='Revenue by Category'
-)
-
-st.plotly_chart(
-    fig_category,
-    use_container_width=True
-)
-
-# =========================
-# LOW STOCK
-# =========================
-
+# Low Stock
 st.subheader('Low Stock Products')
 
-low_stock = products[
-    products['low_stock_flag'] == True
-]
-
-st.dataframe(
-    low_stock[
-        [
-            'kode_barang',
-            'nama',
-            'kategori',
-            'total_stock',
-            'stok_min'
-        ]
+low_stock = (
+    products[
+        products['low_stock_flag'] == True
     ]
 )
 
-# =========================
-# FAST MOVING PRODUCTS
-# =========================
-
-st.subheader('Fast Moving Products')
-
-fast_moving = products[
-    products['fast_moving_flag'] == True
-]
-
 st.dataframe(
-    fast_moving[
-        [
-            'kode_barang',
-            'nama',
-            'kategori',
-            'total_sales'
-        ]
-    ].head(20)
+    low_stock[[
+        'nama',
+        'kategori',
+        'stok'
+    ]]
 )

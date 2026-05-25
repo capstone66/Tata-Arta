@@ -1,12 +1,14 @@
 import pandas as pd
 
 # Load dataset
-file_path = 'data/raw/data_barang_30000.xls'
+file_path = (
+    'data-science/data/raw/data_barang_30000.xls'
+)
 
 # Read Excel
 df = pd.read_excel(file_path)
 
-# Rapikan nama kolom
+# Clean column names
 df.columns = (
     df.columns
     .str.strip()
@@ -14,20 +16,33 @@ df.columns = (
     .str.replace(' ', '_')
 )
 
-# Hapus duplicate
+# Remove duplicates
 df = df.drop_duplicates()
 
-# Isi missing values
+# Handle missing values
 for col in df.columns:
+
     if df[col].dtype == 'object':
-        df[col] = df[col].fillna('Unknown')
+
+        df[col] = df[col].fillna(
+            'Unknown'
+        )
+
     else:
+
         df[col] = df[col].fillna(0)
 
-# Simpan hasil cleaning
-output_path = 'data/processed/products_clean.csv'
+# Save cleaned data
+output_path = (
+    'data-science/data/processed/products_clean.csv'
+)
 
-df.to_csv(output_path, index=False)
+# Export CSV
+df.to_csv(
+    output_path,
+    index=False
+)
 
 print('Cleaning selesai!')
+
 print(df.head())
