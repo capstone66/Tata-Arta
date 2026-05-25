@@ -1,38 +1,206 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =========================================================
+# Tata-Arta .gitignore
+# Covers: Fullstack / Frontend / Node.js / Python AI / OS
+# =========================================================
 
-# Dependencies
-node_modules
+
+# =========================================================
+# Node.js / Fullstack Dependencies
+# =========================================================
+node_modules/
 .pnp
 .pnp.js
+.pnpm-store/
+.yarn/
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
 
-# Local env files
+
+# =========================================================
+# Environment Variables / Secrets
+# NEVER commit real API keys
+# =========================================================
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# Testing
-coverage
+Ai/.env
+Ai/.env.*
+!Ai/.env.example
 
-# Turbo
-.turbo
+fullstack/.env
+fullstack/.env.*
+!fullstack/.env.example
 
-# Vercel
-.vercel
+data-science/.env
+data-science/.env.*
+!data-science/.env.example
 
+
+# =========================================================
 # Build Outputs
+# =========================================================
 .next/
 out/
-build
-dist
+build/
+dist/
+.turbo/
+.vercel/
+.netlify/
 
 
-# Debug
+# =========================================================
+# Testing / Coverage
+# =========================================================
+coverage/
+.nyc_output/
+.pytest_cache/
+htmlcov/
+
+
+# =========================================================
+# Logs
+# =========================================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+*.log
 
-# Misc
+
+# =========================================================
+# Python Virtual Environments
+# =========================================================
+venv/
+.venv/
+env/
+ENV/
+
+Ai/venv/
+Ai/.venv/
+Ai/env/
+Ai/ENV/
+
+data-science/venv/
+data-science/.venv/
+data-science/env/
+data-science/ENV/
+
+
+# =========================================================
+# Python Cache / Compiled Files
+# =========================================================
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+
+# =========================================================
+# Python Packaging / Build
+# =========================================================
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+
+# =========================================================
+# Jupyter Notebook Checkpoints
+# =========================================================
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+
+# =========================================================
+# AI Cache / Temporary Files
+# =========================================================
+Ai/cache/
+Ai/.cache/
+Ai/tmp/
+Ai/temp/
+
+data-science/cache/
+data-science/.cache/
+data-science/tmp/
+data-science/temp/
+
+
+# =========================================================
+# TensorBoard Logs
+# ---------------------------------------------------------
+# Jika ingin menyimpan log TensorBoard sebagai bukti,
+# comment baris Ai/logs/ di bawah.
+# =========================================================
+# Ai/logs/
+
+
+# =========================================================
+# AI Models
+# ---------------------------------------------------------
+# Default: model BOLEH dipush agar FS bisa langsung run API.
+# Kalau file model terlalu besar / GitHub menolak, aktifkan ignore ini:
+#
+# Ai/models/*.keras
+# Ai/models/*.joblib
+# Ai/models/*.h5
+# Ai/models/*.pkl
+# =========================================================
+
+
+# =========================================================
+# Data Files
+# ---------------------------------------------------------
+# Data processed dari repo boleh tetap dipush.
+# Kalau nanti ada dataset lokal besar/private, ignore di sini.
+# =========================================================
+# data-science/data/raw/private/
+# data-science/data/local/
+# *.parquet
+# *.feather
+
+
+# =========================================================
+# OS Files
+# =========================================================
 .DS_Store
+Thumbs.db
+desktop.ini
+
+
+# =========================================================
+# Editor / IDE
+# =========================================================
+.vscode/
+.idea/
+
+
+# =========================================================
+# Certificates / Keys
+# =========================================================
 *.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+
+# =========================================================
+# Docker / Local Runtime
+# =========================================================
+.docker/
+docker-compose.override.yml
+
+
+# =========================================================
+# Misc
+# =========================================================
+*.swp
+*.swo

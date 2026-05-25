@@ -1,0 +1,115 @@
+{
+  "experiment_name": "fast-moving-v4",
+  "task_type": "multiclass",
+  "model_output_path": "C:\\Users\\sandi\\Downloads\\Projek\\Tata-Arta\\Ai\\models\\fast_moving_model.keras",
+  "log_dir": "C:\\Users\\sandi\\Downloads\\Projek\\Tata-Arta\\Ai\\logs\\fit\\fast-moving-v4-20260526-020304",
+  "epochs_completed": 15,
+  "best_monitor_value": 0.8541699051856995,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.7184423208236694,
+      "accuracy": 0.6770210266113281,
+      "val_loss": 1.1487953662872314,
+      "val_accuracy": 0.44292593002319336
+    },
+    {
+      "epoch": 2,
+      "loss": 0.42047765851020813,
+      "accuracy": 0.8112137913703918,
+      "val_loss": 1.4798794984817505,
+      "val_accuracy": 0.45488429069519043
+    },
+    {
+      "epoch": 3,
+      "loss": 0.3661988377571106,
+      "accuracy": 0.8306282758712769,
+      "val_loss": 1.5153311491012573,
+      "val_accuracy": 0.4879639744758606
+    },
+    {
+      "epoch": 4,
+      "loss": 0.35227566957473755,
+      "accuracy": 0.8354042172431946,
+      "val_loss": 1.3580557107925415,
+      "val_accuracy": 0.49930113554000854
+    },
+    {
+      "epoch": 5,
+      "loss": 0.3305032551288605,
+      "accuracy": 0.8452667593955994,
+      "val_loss": 1.1888009309768677,
+      "val_accuracy": 0.5595589280128479
+    },
+    {
+      "epoch": 6,
+      "loss": 0.3183640241622925,
+      "accuracy": 0.8499650359153748,
+      "val_loss": 1.1087323427200317,
+      "val_accuracy": 0.6370554566383362
+    },
+    {
+      "epoch": 7,
+      "loss": 0.30942943692207336,
+      "accuracy": 0.8526442646980286,
+      "val_loss": 0.886389434337616,
+      "val_accuracy": 0.6937412619590759
+    },
+    {
+      "epoch": 8,
+      "loss": 0.29916638135910034,
+      "accuracy": 0.8590898513793945,
+      "val_loss": 0.8342539072036743,
+      "val_accuracy": 0.7238701581954956
+    },
+    {
+      "epoch": 9,
+      "loss": 0.2951487600803375,
+      "accuracy": 0.8597111105918884,
+      "val_loss": 0.7564099431037903,
+      "val_accuracy": 0.7567945122718811
+    },
+    {
+      "epoch": 10,
+      "loss": 0.2941480875015259,
+      "accuracy": 0.8612642884254456,
+      "val_loss": 0.6637019515037537,
+      "val_accuracy": 0.7897189259529114
+    },
+    {
+      "epoch": 11,
+      "loss": 0.28185585141181946,
+      "accuracy": 0.8672439455986023,
+      "val_loss": 0.6220203638076782,
+      "val_accuracy": 0.8151887059211731
+    },
+    {
+      "epoch": 12,
+      "loss": 0.27819812297821045,
+      "accuracy": 0.8679428696632385,
+      "val_loss": 0.629452109336853,
+      "val_accuracy": 0.8192265629768372
+    },
+    {
+      "epoch": 13,
+      "loss": 0.27265384793281555,
+      "accuracy": 0.8691853880882263,
+      "val_loss": 0.5396867394447327,
+      "val_accuracy": 0.8377076983451843
+    },
+    {
+      "epoch": 14,
+      "loss": 0.2718296945095062,
+      "accuracy": 0.871282160282135,
+      "val_loss": 0.5325235724449158,
+      "val_accuracy": 0.8381736278533936
+    },
+    {
+      "epoch": 15,
+      "loss": 0.2691583037376404,
+      "accuracy": 0.8709715008735657,
+      "val_loss": 0.44351905584335327,
+      "val_accuracy": 0.8541699051856995
+    }
+  ]
+}

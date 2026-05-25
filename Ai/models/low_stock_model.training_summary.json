@@ -1,0 +1,59 @@
+{
+  "experiment_name": "restock-priority-v4",
+  "task_type": "binary",
+  "model_output_path": "C:\\Users\\sandi\\Downloads\\Projek\\Tata-Arta\\Ai\\models\\low_stock_model.keras",
+  "log_dir": "C:\\Users\\sandi\\Downloads\\Projek\\Tata-Arta\\Ai\\logs\\fit\\restock-priority-v4-20260526-020550",
+  "epochs_completed": 7,
+  "best_monitor_value": 0.895014762878418,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.2925562262535095,
+      "accuracy": 0.8802515864372253,
+      "val_loss": 0.6792783737182617,
+      "val_accuracy": 0.7671998739242554
+    },
+    {
+      "epoch": 2,
+      "loss": 0.18184183537960052,
+      "accuracy": 0.9325541853904724,
+      "val_loss": 0.7202953696250916,
+      "val_accuracy": 0.7667339444160461
+    },
+    {
+      "epoch": 3,
+      "loss": 0.1516195386648178,
+      "accuracy": 0.9435815811157227,
+      "val_loss": 0.745695948600769,
+      "val_accuracy": 0.766112744808197
+    },
+    {
+      "epoch": 4,
+      "loss": 0.14382587373256683,
+      "accuracy": 0.9455230236053467,
+      "val_loss": 0.5912816524505615,
+      "val_accuracy": 0.768131673336029
+    },
+    {
+      "epoch": 5,
+      "loss": 0.13512782752513885,
+      "accuracy": 0.948745846748352,
+      "val_loss": 0.6247333884239197,
+      "val_accuracy": 0.768131673336029
+    },
+    {
+      "epoch": 6,
+      "loss": 0.1280229538679123,
+      "accuracy": 0.949871838092804,
+      "val_loss": 0.4197003245353699,
+      "val_accuracy": 0.8159652352333069
+    },
+    {
+      "epoch": 7,
+      "loss": 0.12843896448612213,
+      "accuracy": 0.9514638781547546,
+      "val_loss": 0.2690652012825012,
+      "val_accuracy": 0.895014762878418
+    }
+  ]
+}

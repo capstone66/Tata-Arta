@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tata-arta-ai-api
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: GEMINI_OCR_MODEL
+        value: gemini-3.5-flash
+      - key: GEMINI_API_KEY
+        sync: false
