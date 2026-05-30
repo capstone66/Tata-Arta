@@ -1,1 +1,96 @@
-@import "tailwindcss"
+@import "tailwindcss";
+
+/* ── Design Tokens (matching reference design) ── */
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  /* Forest greens */
+  --color-forest: #1A2E0A;
+  --color-forest-mid: #243D0F;
+  --color-forest-rim: #2E5012;
+
+  /* Leaf greens */
+  --color-leaf: #6DB33F;
+  --color-leaf-light: #A3CF78;
+  --color-leaf-pale: #DFF0CC;
+
+  /* Cream / sand tones */
+  --color-cream: #F6F2EB;
+  --color-cream2: #EDE8DF;
+  --color-cream3: #E2DAD0;
+
+  /* Ink / text */
+  --color-ink: #1C1A17;
+  --color-ink2: #4A4540;
+  --color-ink3: #8A857E;
+
+  /* Feedback */
+  --color-red: #B83232;
+  --color-red-light: #FCEAEA;
+
+  /* Animations */
+  --animate-blob1: blob1 18s ease-in-out infinite;
+  --animate-blob2: blob2 22s ease-in-out infinite;
+  --animate-blob3: blob3 15s ease-in-out infinite;
+  --animate-fadeInUp: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shake: shake 0.4s ease-in-out;
+}
+
+/* ── Base Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 13px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-cream);
+  color: var(--color-ink);
+  overflow-x: hidden;
+}
+
+/* ── Keyframes ── */
+@keyframes blob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes blob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-40px, 30px) scale(1.08); }
+  66% { transform: translate(30px, -20px) scale(0.92); }
+}
+
+@keyframes blob3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, 30px) scale(1.1); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}

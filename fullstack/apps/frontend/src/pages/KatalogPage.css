@@ -1,0 +1,76 @@
+/* KatalogPage.css */
+
+.katalog-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 8px; /* Slightly tighter padding for the table card based on the mockup */
+  overflow: hidden;
+}
+
+.katalog-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.katalog-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 16px 24px;
+  background: rgba(247, 243, 234, 0.6); /* very light cream background for header */
+}
+
+/* First and last th rounded corners */
+.katalog-table th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+.katalog-table th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.katalog-table td {
+  padding: 16px 24px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(222, 214, 201, 0.4);
+}
+
+.katalog-table tr:last-child td {
+  border-bottom: none;
+}
+
+.katalog-table td b {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Status Badges for Katalog */
+.katalog-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.katalog-badge.normal {
+  background: var(--green2);
+  color: #2d7a14;
+}
+
+.katalog-badge.kritis {
+  background: var(--red2);
+  color: var(--red);
+}
+
+.katalog-badge.perlu-cek {
+  background: var(--gold2);
+  color: var(--gold);
+}
