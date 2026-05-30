@@ -1,0 +1,126 @@
+/* AnalisisPage.css */
+
+.analisis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.analisis-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.analisis-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.analisis-card-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+/* Top Produk Terlaris */
+.top-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.top-product-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(222, 214, 201, 0.4);
+}
+
+.top-product-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.rank-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.rank-1 {
+  background: #dff4cf;
+  color: var(--forest);
+}
+
+.rank-2 {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.rank-3 {
+  background: #fef08a;
+  color: #a16207;
+}
+
+.product-info {
+  flex: 1;
+}
+
+.product-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.product-sold {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.product-revenue {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* Kategori Terbaik (Mock Chart) */
+.chart-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 180px;
+  padding-top: 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.chart-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 8px;
+}
+
+.chart-bar {
+  width: 12px;
+  border-radius: 6px;
+}
+
+.chart-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
