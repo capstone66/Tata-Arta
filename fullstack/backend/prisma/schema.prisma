@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  categories   Category[]
+  transactions Transaction[]
+  products     Product[]
+  sales        Sale[]
+  budgets      Budget[]
+}
+
+model Category {
+  id     Int    @id @default(autoincrement())
+  name   String
+  type   String
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([name, userId])
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  amount      Float
+  type        String
+  description String
+  date        DateTime
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, date])
+}
+
+model Sale {
+  id        Int        @id @default(autoincrement())
+  total     Float
+  profit    Float?
+  createdAt DateTime   @default(now())
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items SaleItem[]
+
+  @@index([userId, createdAt])
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  saleId    Int
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int
+  price     Float
+  cost      Float
+
+  @@index([saleId])
+}
+
+model Budget {
+  id         Int      @id @default(autoincrement())
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  amount     Float
+  month      Int
+  year       Int
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([categoryId, month, year, userId])
+  @@index([userId, year, month])
+}
+
+model Product {
+  id              Int        @id @default(autoincrement())
+  kodeBarang      String     @unique
+  name            String
+  price           Float
+  cost            Float
+  stock           Int
+  category        String
+  subCategory     String?
+  supplier        String?
+  stokMin         Int?
+  stokMax         Int?
+  trxTotalQty     Int?
+  trxQty30d       Int?
+  trxQty90d       Int?
+  trxCount        Int?
+  trxTotalRevenue Float?
+  trxTotalProfit  Float?
+  saleItems       SaleItem[]
+  userId          Int
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([userId])
+}
