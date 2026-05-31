@@ -1,72 +1,109 @@
-# Tata-Arta AI Service — Panduan Lengkap untuk Fullstack
+# Tata-Arta AI Service — Panduan Fullstack Super Lengkap
 
-README ini dibuat untuk tim **Fullstack (FS)** agar bisa menjalankan, mengetes, dan mengintegrasikan service AI Tata-Arta tanpa perlu memahami detail training model secara mendalam.
+Dokumen ini dibuat khusus untuk tim **Fullstack (FS)** agar semua orang paham:
 
-AI service berada di folder:
+1. AI service ini fungsinya apa.
+2. Data apa yang harus dikirim ke AI.
+3. Endpoint mana yang dipakai di UI tertentu.
+4. Request dan response setiap endpoint.
+5. Bagaimana handle produk lama, produk baru, dan data yang berbeda dari dataset DS.
+6. Bagaimana role Owner dan Karyawan harus dibatasi.
+7. Apa saja yang harus dikerjakan FS agar AI benar-benar terpakai di website.
+8. Bagaimana OCR harus dibuat manual: scan → review → simpan.
+9. Bagaimana cara testing dan deploy.
 
-```text
-Tata-Arta/Ai
-```
-
-Base URL lokal saat API dijalankan:
+Base URL lokal AI:
 
 ```text
 http://localhost:8000
 ```
 
-Swagger/OpenAPI Docs:
+Swagger/OpenAPI:
 
 ```text
 http://localhost:8000/docs
 ```
 
----
+Production nanti:
 
-## Daftar Isi
-
-1. [Ringkasan Fungsi AI](#1-ringkasan-fungsi-ai)
-2. [Struktur Folder](#2-struktur-folder)
-3. [Konsep Integrasi untuk Fullstack](#3-konsep-integrasi-untuk-fullstack)
-4. [Setup Lokal di Windows VSCode](#4-setup-lokal-di-windows-vscode)
-5. [Environment Variable](#5-environment-variable)
-6. [Menjalankan AI API](#6-menjalankan-ai-api)
-7. [Aturan Produk Lama, Produk Baru, dan Data Berbeda dari DS](#7-aturan-produk-lama-produk-baru-dan-data-berbeda-dari-ds)
-8. [Endpoint API Lengkap](#8-endpoint-api-lengkap)
-9. [Contoh Integrasi Backend Express](#9-contoh-integrasi-backend-express)
-10. [Contoh Integrasi Frontend](#10-contoh-integrasi-frontend)
-11. [Role Access Owner dan Karyawan](#11-role-access-owner-dan-karyawan)
-12. [OCR Nota Manual](#12-ocr-nota-manual)
-13. [Automated Testing](#13-automated-testing)
-14. [Docker dan Deploy](#14-docker-dan-deploy)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Checklist Sebelum Demo/Deploy](#16-checklist-sebelum-demodeploy)
-17. [Ringkasan Paling Penting untuk FS](#17-ringkasan-paling-penting-untuk-fs)
+```text
+https://URL-DEPLOY-AI-SERVICE
+```
 
 ---
 
-# 1. Ringkasan Fungsi AI
+# 1. Inti Pemahaman untuk Fullstack
 
-AI service Tata-Arta menyediakan beberapa fitur utama:
+AI service Tata-Arta **bukan database utama** dan **bukan pengganti backend**.
 
-| Fitur | Fungsi |
-|---|---|
-| Fast Moving Detection | Memprediksi produk termasuk `Slow Moving`, `Normal`, atau `Fast Moving` |
-| Restock Priority Prediction | Memprediksi apakah produk `Stock Safe` atau `Restock Priority` |
-| Profit Prediction | Mengestimasi profit ratio dan kategori profit produk |
-| Recommendation System | Rekomendasi top product, high profit product, dan restock priority |
-| Daily KPI Forecast | Forecast/summary KPI harian untuk dashboard |
-| OCR Nota Gemini | Membaca nota/faktur secara manual dari upload gambar |
-| Product Search | Mencari produk berdasarkan nama untuk autocomplete UI |
+AI service hanya bertugas menerima data produk atau file nota, memprosesnya, lalu mengembalikan hasil prediksi/OCR/rekomendasi.
 
-Hasil training final:
+Pembagian tugas:
 
-| Model | Metrik | Status |
-|---|---:|---|
-| Fast Moving Detection | Validation Accuracy 85.41% | Passed |
-| Restock Priority | Validation Accuracy 89.50% | Passed |
-| Profit Prediction | Validation MAE 0.0179 | Passed |
+```text
+Frontend:
+- Menampilkan halaman dan komponen UI.
+- User memilih produk.
+- User input transaksi.
+- User upload nota OCR.
+- User melihat hasil AI.
 
-Hasil automated API testing terakhir:
+Backend Fullstack:
+- Menyimpan database utama.
+- Menyimpan user, role, produk, stok, transaksi, barang masuk, laporan.
+- Menentukan akses Owner/Karyawan.
+- Mengambil data produk dari database.
+- Mengirim request ke AI service.
+- Menyimpan hasil transaksi/stok/OCR yang sudah dikonfirmasi user.
+
+AI Service:
+- Product search dari data AI.
+- Prediksi fast moving.
+- Prediksi restock priority.
+- Prediksi profit.
+- Rekomendasi produk.
+- Insight summary.
+- Forecast KPI.
+- OCR nota/faktur.
+```
+
+Arsitektur yang disarankan:
+
+```text
+Frontend
+↓
+Backend Fullstack
+↓
+AI FastAPI Service
+↓
+Backend Fullstack
+↓
+Frontend
+```
+
+Frontend boleh langsung memanggil AI service untuk demo, tetapi untuk production lebih aman jika **backend fullstack menjadi proxy**.
+
+---
+
+# 2. Fitur AI yang Sudah Ada
+
+| Fitur AI | Endpoint Utama | Dipakai Untuk |
+|---|---|---|
+| Product Search | `GET /products/search` | Search/autocomplete barang |
+| Predict All | `POST /predict/all` | Analisis produk lengkap |
+| Fast Moving | `POST /predict/fast-moving` | Status produk cepat/lambat laku |
+| Low Stock / Restock | `POST /predict/low-stock` | Prioritas restock |
+| Profit Prediction | `POST /predict/profit` | Estimasi profit produk |
+| Top Products | `GET /recommendations/top-products` | Produk terlaris |
+| High Profit | `GET /recommendations/high-profit` | Produk margin/profit tinggi |
+| Restock Recommendation | `GET /recommendations/restock-priority` | Rekomendasi restock |
+| Insight Summary | `GET /insights/summary` | Ringkasan insight dashboard |
+| Forecast KPI | `GET /forecast/daily-kpi` | Chart forecast/summary KPI |
+| OCR Nota | `POST /ocr/scan-receipt` | Scan nota/faktur manual |
+| Health | `GET /health` | Cek service/model |
+| Metadata | `GET /metadata` | Info service/model |
+
+Hasil test terakhir:
 
 ```text
 Passed : 121
@@ -75,125 +112,142 @@ Skipped: 1
 Status : PASSED
 ```
 
-`Skipped: 1` adalah OCR ketika automated test tidak diberikan gambar nota. Itu bukan error.
+`Skipped: 1` adalah OCR jika tidak diberi file gambar nota saat test otomatis. Itu bukan error.
 
 ---
 
-# 2. Struktur Folder
+# 3. Yang Harus Dikerjakan FS
 
-Struktur penting folder `Ai/`:
+FS harus mengaplikasikan AI ke website dengan cara berikut.
 
-```text
-Ai/
-├── api/
-│   ├── __init__.py
-│   ├── main.py
-│   └── schemas.py
-│
-├── src/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── data_loader.py
-│   ├── feature_engineering.py
-│   ├── preprocessing.py
-│   ├── custom_layers.py
-│   ├── custom_callbacks.py
-│   ├── model_builder.py
-│   ├── trainer.py
-│   ├── train_fast_moving.py
-│   ├── train_low_stock.py
-│   ├── train_profit.py
-│   ├── inference.py
-│   └── recommendation.py
-│
-├── ocr/
-│   ├── __init__.py
-│   └── gemini_ocr.py
-│
-├── tests/
-│   └── auto_test_api.py
-│
-├── models/
-│   ├── fast_moving_model.keras
-│   ├── fast_moving_preprocessor.joblib
-│   ├── fast_moving_model.training_summary.json
-│   ├── low_stock_model.keras
-│   ├── low_stock_preprocessor.joblib
-│   ├── low_stock_model.training_summary.json
-│   ├── profit_model.keras
-│   ├── profit_preprocessor.joblib
-│   └── profit_model.training_summary.json
-│
-├── train_all.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── Dockerfile
-├── docker-compose.yml
-├── render.yaml
-├── Procfile
-├── Makefile
-└── README.md
+## 3.1 Buat environment variable AI di backend
+
+Contoh `.env` backend fullstack:
+
+```env
+AI_API_BASE_URL=http://localhost:8000
 ```
 
-File model `.keras` dan preprocessor `.joblib` sudah ikut di repo. Jadi FS bisa langsung menjalankan API tanpa training ulang.
+Saat production:
+
+```env
+AI_API_BASE_URL=https://URL-DEPLOY-AI-SERVICE
+```
+
+## 3.2 Buat proxy route di backend
+
+Jangan hardcode langsung dari frontend ke AI service untuk production. Buat route seperti:
+
+```text
+GET  /api/ai/health
+GET  /api/ai/search-products
+POST /api/ai/predict-all
+GET  /api/ai/recommendations/restock
+GET  /api/ai/insights
+GET  /api/ai/forecast
+POST /api/ai/ocr
+```
+
+Backend route ini nanti yang memanggil AI FastAPI.
+
+## 3.3 Simpan produk di database fullstack
+
+Database fullstack harus punya tabel produk. Minimal field yang disarankan:
+
+```text
+products
+- id
+- kode_barang
+- nama_barang
+- kategori
+- sub_kategori
+- supplier
+- satuan
+- hpp
+- harga_toko_1
+- stok_min
+- stok_max
+- total_stock
+- created_at
+- updated_at
+```
+
+## 3.4 Simpan transaksi di database fullstack
+
+Minimal:
+
+```text
+transactions
+- id
+- kode_barang
+- product_id
+- qty
+- harga_jual
+- hpp
+- subtotal
+- profit
+- payment_method
+- transaction_date
+- created_by
+- created_at
+```
+
+## 3.5 Backend menghitung fitur produk untuk produk baru
+
+Untuk produk lama dari dataset, cukup kirim `kode_barang`.
+
+Untuk produk baru yang belum ada di dataset AI, backend harus kirim fitur lengkap:
+
+```json
+{
+  "nama_barang": "Produk Baru",
+  "kategori": "MINUMAN",
+  "supplier": "Supplier Baru",
+  "hpp": 5000,
+  "harga_toko_1": 7000,
+  "stok_min": 10,
+  "stok_max": 100,
+  "total_stock": 40,
+  "trx_total_qty": 12,
+  "trx_qty_30d": 4,
+  "trx_qty_90d": 12,
+  "trx_count": 5,
+  "trx_total_revenue": 84000,
+  "trx_total_profit": 24000
+}
+```
+
+## 3.6 UI harus membedakan Owner dan Karyawan
+
+Owner boleh lihat semua insight strategis. Karyawan tidak boleh lihat profit, HPP, margin, laba, dan insight owner.
+
+## 3.7 OCR harus manual
+
+OCR tidak boleh langsung simpan otomatis. Flow wajib:
+
+```text
+Upload nota
+↓
+AI baca nota
+↓
+UI tampilkan hasil OCR
+↓
+User cek/edit manual
+↓
+User klik Simpan
+↓
+Backend simpan ke database
+```
 
 ---
 
-# 3. Konsep Integrasi untuk Fullstack
+# 4. Setup AI Lokal untuk FS
 
-AI service ini **bukan database utama**.
-
-Pembagian tanggung jawab:
-
-```text
-Frontend:
-- Menampilkan UI
-- User memilih produk
-- User upload nota OCR
-- Menampilkan hasil AI
-
-Backend Fullstack:
-- Menyimpan data produk, transaksi, stok, dan user
-- Menentukan role owner/karyawan
-- Mengambil produk dari database
-- Mengirim request ke AI service
-- Menyimpan transaksi/stok/OCR final ke database
-
-AI Service:
-- Menerima input produk
-- Memprediksi movement, restock, dan profit
-- Memberikan rekomendasi
-- Membaca nota/faktur via OCR
-```
-
-Flow paling aman untuk production:
-
-```text
-Frontend → Backend Fullstack → AI FastAPI → Backend Fullstack → Frontend
-```
-
-Frontend boleh langsung hit AI untuk demo, tetapi untuk production lebih aman lewat backend.
-
----
-
-# 4. Setup Lokal di Windows VSCode
-
-Buka folder:
-
-```text
-C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
-```
-
-Buka terminal VSCode di folder `Ai`.
-
-Cek Python yang tersedia:
+Masuk folder AI:
 
 ```bat
-py -0p
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
 ```
-
-Gunakan Python 3.11. Jangan pakai Python 3.14 untuk TensorFlow.
 
 Buat virtual environment:
 
@@ -201,22 +255,10 @@ Buat virtual environment:
 py -3.11 -m venv venv
 ```
 
-Aktifkan virtual environment:
+Aktifkan:
 
 ```bat
 venv\Scripts\activate
-```
-
-Cek Python:
-
-```bat
-python --version
-```
-
-Harus keluar:
-
-```text
-Python 3.11.x
 ```
 
 Install dependency:
@@ -226,109 +268,70 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-Jika TensorBoard error `pkg_resources`, jalankan:
-
-```bat
-pip uninstall setuptools -y
-pip install "setuptools<82"
-```
-
----
-
-# 5. Environment Variable
-
-Copy `.env.example` menjadi `.env`:
+Copy env:
 
 ```bat
 copy .env.example .env
 ```
 
-Isi `.env`:
+Isi `.env` minimal:
 
 ```env
-GEMINI_API_KEY=ISI_API_KEY_GEMINI_KAMU
+GEMINI_API_KEY=ISI_API_KEY_GEMINI
 GEMINI_OCR_MODEL=gemini-3.5-flash
-
-TATA_ARTA_DATA_DIR=C:/Users/sandi/Downloads/Projek/Tata-Arta/data-science/data/processed
-
-PRODUCTS_FEATURED_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/products_featured.csv
-PRODUCTS_CLEAN_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/products_clean.csv
-TRANSACTIONS_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/transactions.csv
-DAILY_KPI_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/daily_kpi.csv
-
 APP_ENV=development
-RANDOM_STATE=42
 TF_CPP_MIN_LOG_LEVEL=2
 ```
 
-Penting:
-
-```text
-Jangan commit .env ke GitHub.
-Yang boleh dicommit hanya .env.example.
-```
-
----
-
-# 6. Menjalankan AI API
-
-Dari folder `Ai`:
+Jalankan API:
 
 ```bat
-venv\Scripts\activate
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Buka:
+Buka docs:
 
 ```text
 http://localhost:8000/docs
 ```
 
-Jika API jalan, Swagger akan terbuka.
-
-Health check:
-
-```http
-GET /health
-```
-
-Contoh response:
-
-```json
-{
-  "status": "ok",
-  "models": {
-    "fast_moving": true,
-    "low_stock": true,
-    "profit": true
-  }
-}
-```
-
-Kalau salah satu model `false`, cek folder `Ai/models/`.
-
 ---
 
-# 7. Aturan Produk Lama, Produk Baru, dan Data Berbeda dari DS
+# 5. Cara Memahami Produk Lama, Produk Baru, dan Data Beda DS
 
-Pertanyaan umum FS:
+## 5.1 Dataset DS dipakai untuk training awal
 
-```text
-Kalau data website beda dari dataset DS, bagaimana?
-```
-
-Jawaban:
+Dataset dari DS adalah baseline awal untuk melatih model:
 
 ```text
-Dataset DS dipakai sebagai training awal/baseline.
-Saat website berjalan, sumber data utama adalah database fullstack.
-AI tetap bisa dipakai selama backend mengirim data produk yang sesuai.
+products_featured.csv
+transactions.csv
+daily_kpi.csv
 ```
 
-## 7.1 Produk Lama dari Dataset DS
+Model yang dihasilkan:
 
-Bisa langsung kirim:
+```text
+fast_moving_model.keras
+low_stock_model.keras
+profit_model.keras
+```
+
+## 5.2 Database website menjadi sumber data utama
+
+Saat website sudah jadi, database fullstack akan menyimpan data asli dari user.
+
+```text
+Dataset DS = training awal
+Database FS = data asli saat website berjalan
+AI = prediksi berdasarkan input dari backend
+```
+
+## 5.3 Kalau data website beda dari dataset DS
+
+Tidak masalah, selama backend mengirim data yang cukup.
+
+Untuk produk lama:
 
 ```json
 {
@@ -336,7 +339,7 @@ Bisa langsung kirim:
 }
 ```
 
-atau:
+Untuk nama lengkap:
 
 ```json
 {
@@ -344,78 +347,131 @@ atau:
 }
 ```
 
-## 7.2 Produk Baru yang Belum Ada di Dataset DS
-
-Jangan hanya kirim nama:
+Untuk produk baru:
 
 ```json
 {
-  "nama_barang": "Produk Baru"
-}
-```
-
-Itu kurang cukup karena AI belum punya referensi produk tersebut.
-
-Kirim fitur lengkap:
-
-```json
-{
-  "nama_barang": "Kopi ABC 20gr",
+  "nama_barang": "Produk Baru",
   "kategori": "MINUMAN",
   "supplier": "Supplier Baru",
-  "hpp": 1500,
-  "harga_toko_1": 2000,
+  "hpp": 5000,
+  "harga_toko_1": 7000,
   "stok_min": 10,
   "stok_max": 100,
-  "total_stock": 50,
+  "total_stock": 40,
   "trx_total_qty": 0,
   "trx_qty_30d": 0,
   "trx_qty_90d": 0,
-  "trx_count": 0,
-  "trx_total_revenue": 0,
-  "trx_total_profit": 0
+  "trx_count": 0
 }
 ```
 
-Jika `trx_count` masih kecil, UI harus menampilkan:
+## 5.4 Kalau transaksi produk baru belum cukup
+
+UI wajib menampilkan warning:
 
 ```text
 Data penjualan belum cukup. Prediksi AI masih estimasi awal.
 ```
 
-## 7.3 Kapan Perlu Training Ulang?
-
-Untuk capstone/demo:
+Contoh aturan UI:
 
 ```text
-Tidak wajib retraining otomatis.
+if trx_count < 5:
+    tampilkan "Estimasi awal"
+else:
+    tampilkan hasil AI normal
 ```
-
-Untuk production:
-
-```text
-Retraining bisa dilakukan mingguan/bulanan dari database website.
-```
-
-AI tidak training setiap ada transaksi. Yang benar: data dikumpulkan dulu, lalu model dilatih ulang secara berkala.
 
 ---
 
-# 8. Endpoint API Lengkap
+# 6. Flow Search dan Predict Produk
 
-## 8.1 GET `/health`
+## 6.1 Kalau user mengetik keyword bebas
+
+Contoh user mengetik:
+
+```text
+beras
+aqua
+susu
+indomie
+minyak
+```
+
+Jangan langsung prediksi. Lakukan search dulu.
+
+```text
+GET /products/search?q=beras&limit=10
+```
+
+Lalu UI menampilkan list produk. User pilih produk yang benar. Setelah itu backend panggil:
+
+```text
+POST /predict/all
+```
+
+dengan body:
+
+```json
+{
+  "kode_barang": "B4533"
+}
+```
+
+## 6.2 Kalau user memilih produk dari database
+
+Backend langsung ambil `kode_barang`, lalu panggil AI:
+
+```json
+{
+  "kode_barang": "R1284"
+}
+```
+
+## 6.3 Kalau hanya punya nama produk lengkap
+
+Bisa langsung:
+
+```json
+{
+  "nama_barang": "SUN EKONOMIS BERAS MERAH 120GR"
+}
+```
+
+Tapi FS harus tetap cek response `matched_product`.
+
+---
+
+# 7. Endpoint API Lengkap dengan Request dan Response
+
+## 7.1 GET `/health`
 
 ### Fungsi
 
-Cek AI service dan model.
+Cek AI service hidup dan semua model tersedia.
 
-### Request
+### Method
 
 ```http
-GET /health
+GET
 ```
 
-### Response
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+Tidak ada.
+
+### Request cURL
+
+```bash
+curl -X GET "http://localhost:8000/health"
+```
+
+### Response 200
 
 ```json
 {
@@ -428,27 +484,51 @@ GET /health
 }
 ```
 
+### Yang harus FS lakukan
+
+Gunakan untuk health check saat backend start atau halaman admin/debug.
+
 ---
 
-## 8.2 GET `/metadata`
+## 7.2 GET `/metadata`
 
 ### Fungsi
 
-Cek metadata fitur AI.
+Mengambil informasi metadata service AI.
 
-### Request
+### Method
 
 ```http
-GET /metadata
+GET
 ```
 
-### Contoh Response
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+Tidak ada.
+
+### Request cURL
+
+```bash
+curl -X GET "http://localhost:8000/metadata"
+```
+
+### Response 200
 
 ```json
 {
   "service": "Tata-Arta AI API",
   "version": "1.0.0",
+  "models": {
+    "fast_moving": "available",
+    "low_stock": "available",
+    "profit": "available"
+  },
   "features": [
+    "product_search",
     "fast_moving_detection",
     "restock_priority_prediction",
     "profit_prediction",
@@ -459,33 +539,47 @@ GET /metadata
 }
 ```
 
+### Yang harus FS lakukan
+
+Opsional. Dipakai untuk debug/admin page.
+
 ---
 
-## 8.3 GET `/products/search`
+## 7.3 GET `/products/search`
 
 ### Fungsi
 
-Search produk berdasarkan nama. Dipakai untuk autocomplete/search barang.
+Search produk berdasarkan nama untuk autocomplete.
 
-### Request
+### Method
 
 ```http
-GET /products/search?q=beras&limit=10
+GET
 ```
+
+### Body
+
+Tidak ada body.
 
 ### Query Params
 
 | Param | Wajib | Contoh | Keterangan |
-|---|---|---|---|
-| `q` | Ya | `beras` | keyword nama barang |
-| `limit` | Tidak | `10` | jumlah hasil maksimal |
+|---|---:|---|---|
+| `q` | Ya | `beras` | keyword produk |
+| `limit` | Tidak | `10` | jumlah hasil |
 
-### Contoh Response
+### Request cURL
+
+```bash
+curl -X GET "http://localhost:8000/products/search?q=beras&limit=10"
+```
+
+### Response 200
 
 ```json
 {
   "query": "beras",
-  "count": 10,
+  "count": 2,
   "items": [
     {
       "kode_barang": "B4533",
@@ -498,40 +592,72 @@ GET /products/search?q=beras&limit=10
       "trx_total_qty": 120,
       "trx_count": 38,
       "match_score": 0.83
+    },
+    {
+      "kode_barang": "S6259",
+      "nama": "SUN EKONOMIS BERAS MERAH 120GR",
+      "kategori": "MAKANAN BAYI",
+      "sub_kategori": "0.0",
+      "supplier": "TIGA BENUA",
+      "hpp": 6500,
+      "harga_toko_1": 8000,
+      "trx_total_qty": 80,
+      "trx_count": 25,
+      "match_score": 0.50
     }
   ]
 }
 ```
 
-### Dipakai di UI
+### Response jika tidak ada hasil
 
-```text
-- Search/autocomplete produk
-- Pilih produk sebelum prediksi
+```json
+{
+  "query": "produkaneh",
+  "count": 0,
+  "items": []
+}
 ```
 
-Jangan langsung predict dari keyword pendek seperti `beras`, `aqua`, `susu`, atau `minyak`. Search dulu, user pilih produk, lalu predict pakai `kode_barang`.
+### Yang harus FS lakukan
+
+UI menampilkan hasil search, user memilih produk, lalu backend memanggil `/predict/all` dengan `kode_barang`.
 
 ---
 
-## 8.4 POST `/predict/all`
+## 7.4 POST `/predict/all`
 
 ### Fungsi
 
-Endpoint utama. Mengembalikan hasil 3 model sekaligus:
+Endpoint utama untuk prediksi lengkap 3 model:
 
 ```text
-- Fast Moving
-- Restock Priority
+- Fast Moving Detection
+- Restock Priority Prediction
 - Profit Prediction
 ```
 
-### Request by kode_barang
+### Method
 
 ```http
-POST /predict/all
-Content-Type: application/json
+POST
 ```
+
+### Body
+
+Wajib salah satu:
+
+```text
+- kode_barang
+- nama_barang / nama_produk / nama
+- fitur lengkap produk baru
+```
+
+### Query Params
+
+Tidak ada.
+
+### Request by kode_barang
 
 ```json
 {
@@ -539,7 +665,7 @@ Content-Type: application/json
 }
 ```
 
-### Request by nama_barang lengkap
+### Request by nama lengkap
 
 ```json
 {
@@ -547,7 +673,7 @@ Content-Type: application/json
 }
 ```
 
-### Request produk baru / data dari database website
+### Request produk baru / data database website
 
 ```json
 {
@@ -561,12 +687,23 @@ Content-Type: application/json
   "total_stock": 50,
   "trx_total_qty": 0,
   "trx_qty_30d": 0,
+  "trx_qty_60d": 0,
   "trx_qty_90d": 0,
-  "trx_count": 0
+  "trx_count": 0,
+  "trx_total_revenue": 0,
+  "trx_total_profit": 0
 }
 ```
 
-### Contoh Response
+### Request cURL
+
+```bash
+curl -X POST "http://localhost:8000/predict/all" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"kode_barang\":\"R1284\"}"
+```
+
+### Response 200
 
 ```json
 {
@@ -605,7 +742,27 @@ Content-Type: application/json
 }
 ```
 
-### Nilai Penting
+### Penjelasan response
+
+`matched_product` adalah produk yang benar-benar dipakai AI.
+
+FS harus cek:
+
+```text
+matched_product.kode_barang
+matched_product.nama
+matched_product.match_type
+```
+
+`match_type` bisa berisi:
+
+| match_type | Arti |
+|---|---|
+| `kode_barang_exact` | Cocok berdasarkan kode barang |
+| `name_exact` | Nama cocok persis |
+| `name_contains` | Nama mengandung keyword |
+| `name_fuzzy` | Cocok fuzzy |
+| `manual_features` | Produk baru/input fitur manual |
 
 `fast_moving.prediction`:
 
@@ -630,22 +787,38 @@ Medium Profit
 High Profit
 ```
 
-### Dipakai di UI
+### Error 404 produk tidak ditemukan
+
+```json
+{
+  "detail": "nama_barang 'PRODUK_INI_TIDAK_MUNGKIN_ADA_999999' tidak ditemukan. Pastikan nama barang berasal dari daftar produk."
+}
+```
+
+### Yang harus FS lakukan
+
+Pakai `/predict/all` untuk:
 
 ```text
-- Detail produk
-- Katalog barang owner
+- Detail produk owner
 - AI Analisis Produk
+- Badge produk
 - Rekomendasi aksi produk
 ```
 
+Karyawan jangan ditampilkan bagian `profit`.
+
 ---
 
-## 8.5 POST `/predict/fast-moving`
+## 7.5 POST `/predict/fast-moving`
 
 ### Fungsi
 
-Prediksi movement produk.
+Prediksi apakah produk slow, normal, atau fast moving.
+
+### Body
+
+Sama seperti `/predict/all`.
 
 ### Request
 
@@ -663,7 +836,7 @@ atau:
 }
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -674,6 +847,7 @@ atau:
     "kode_barang": "R1284",
     "nama": "REJOICE SHP 200ML COMPLETE",
     "kategori": "PERAWATAN",
+    "sub_kategori": "SHAMPOO",
     "supplier": "SUPPLIER A"
   },
   "class_id": 2,
@@ -687,23 +861,31 @@ atau:
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan badge:
 
 ```text
-- Badge produk cepat laku
-- Detail produk
-- Dashboard owner
+Fast Moving
+Normal
+Slow Moving
+```
+
+Contoh UI text:
+
+```text
+Produk ini termasuk Fast Moving. Pastikan stok tetap tersedia.
 ```
 
 ---
 
-## 8.6 POST `/predict/low-stock`
+## 7.6 POST `/predict/low-stock`
 
 ### Fungsi
 
 Prediksi prioritas restock.
 
-### Request
+### Body
 
 ```json
 {
@@ -711,7 +893,7 @@ Prediksi prioritas restock.
 }
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -722,6 +904,7 @@ Prediksi prioritas restock.
     "kode_barang": "R1284",
     "nama": "REJOICE SHP 200ML COMPLETE",
     "kategori": "PERAWATAN",
+    "sub_kategori": "SHAMPOO",
     "supplier": "SUPPLIER A"
   },
   "class_id": 1,
@@ -732,23 +915,30 @@ Prediksi prioritas restock.
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan status:
 
 ```text
-- Alert stok
-- Rekomendasi restock
-- Smart notification
+Stock Safe
+Restock Priority
+```
+
+Jika `Restock Priority`, tampilkan alert:
+
+```text
+Produk ini perlu diprioritaskan untuk restock.
 ```
 
 ---
 
-## 8.7 POST `/predict/profit`
+## 7.7 POST `/predict/profit`
 
 ### Fungsi
 
-Prediksi estimasi profit produk.
+Prediksi profit produk.
 
-### Request
+### Body
 
 ```json
 {
@@ -756,18 +946,27 @@ Prediksi estimasi profit produk.
 }
 ```
 
-### Response
+atau:
+
+```json
+{
+  "nama_barang": "SUN EKONOMIS BERAS MERAH 120GR"
+}
+```
+
+### Response 200
 
 ```json
 {
   "matched_product": {
-    "match_type": "kode_barang_exact",
-    "query": "R1284",
+    "match_type": "name_exact",
+    "query": "SUN EKONOMIS BERAS MERAH 120GR",
     "matched_score": 1.0,
-    "kode_barang": "R1284",
-    "nama": "REJOICE SHP 200ML COMPLETE",
-    "kategori": "PERAWATAN",
-    "supplier": "SUPPLIER A"
+    "kode_barang": "S6259",
+    "nama": "SUN EKONOMIS BERAS MERAH 120GR",
+    "kategori": "MAKANAN BAYI",
+    "sub_kategori": "0.0",
+    "supplier": "TIGA BENUA"
   },
   "estimated_profit_ratio": 0.1194,
   "estimated_profit_percent": 11.94,
@@ -775,31 +974,42 @@ Prediksi estimasi profit produk.
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan hanya untuk Owner:
 
 ```text
-- Detail produk owner
-- Analisis profit
-- High profit recommendation
+Profit Category: Medium Profit
+Estimated Profit: 11.94%
 ```
 
-Profit endpoint sebaiknya **Owner only**.
+Jangan tampilkan ke Karyawan.
 
 ---
 
-## 8.8 GET `/recommendations/top-products`
+## 7.8 GET `/recommendations/top-products`
 
 ### Fungsi
 
-Mengambil daftar produk terlaris / paling aktif.
+Mengambil produk terlaris atau paling aktif.
+
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+| Param | Wajib | Contoh |
+|---|---:|---|
+| `limit` | Tidak | `10` |
 
 ### Request
 
-```http
+```text
 GET /recommendations/top-products?limit=10
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -816,29 +1026,41 @@ GET /recommendations/top-products?limit=10
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan di:
 
 ```text
-- Dashboard owner
-- Analisis penjualan
-- Top product card
+- Dashboard Owner
+- Analisis Penjualan
+- Top Product Card
 ```
 
 ---
 
-## 8.9 GET `/recommendations/high-profit`
+## 7.9 GET `/recommendations/high-profit`
 
 ### Fungsi
 
-Mengambil rekomendasi produk profit tinggi.
+Mengambil produk dengan potensi profit tinggi.
+
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+| Param | Wajib | Contoh |
+|---|---:|---|
+| `limit` | Tidak | `10` |
 
 ### Request
 
-```http
+```text
 GET /recommendations/high-profit?limit=10
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -855,31 +1077,35 @@ GET /recommendations/high-profit?limit=10
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
 
-```text
-- Owner dashboard
-- Rekomendasi profit
-- Analisis produk
-```
-
-Owner only.
+Tampilkan untuk Owner only.
 
 ---
 
-## 8.10 GET `/recommendations/restock-priority`
+## 7.10 GET `/recommendations/restock-priority`
 
 ### Fungsi
 
-Mengambil daftar produk prioritas restock.
+Mengambil produk prioritas restock.
+
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+| Param | Wajib | Contoh |
+|---|---:|---|
+| `limit` | Tidak | `10` |
 
 ### Request
 
-```http
+```text
 GET /recommendations/restock-priority?limit=10
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -896,29 +1122,41 @@ GET /recommendations/restock-priority?limit=10
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan di:
 
 ```text
-- Rekomendasi stok
-- Dashboard owner
-- Smart notification
+- Rekomendasi Stok
+- Dashboard Owner
+- Smart Notification
 ```
+
+Karyawan boleh diberi versi terbatas tanpa profit.
 
 ---
 
-## 8.11 GET `/insights/summary`
+## 7.11 GET `/insights/summary`
 
 ### Fungsi
 
-Mengambil ringkasan insight AI.
+Ringkasan insight AI untuk dashboard.
+
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+Tidak ada.
 
 ### Request
 
-```http
+```text
 GET /insights/summary
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -936,31 +1174,39 @@ GET /insights/summary
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan hanya untuk Owner:
 
 ```text
-- Dashboard owner
-- AI insight panel
-- Smart notification
+- Dashboard Owner
+- AI Insight Panel
+- Smart Notification
 ```
-
-Owner only.
 
 ---
 
-## 8.12 GET `/forecast/daily-kpi`
+## 7.12 GET `/forecast/daily-kpi`
 
 ### Fungsi
 
-Mengambil forecast atau ringkasan KPI harian.
+Forecast/summary KPI harian.
+
+### Body
+
+Tidak ada body.
+
+### Query Params
+
+Tidak ada.
 
 ### Request
 
-```http
+```text
 GET /forecast/daily-kpi
 ```
 
-### Response
+### Response 200
 
 ```json
 {
@@ -982,38 +1228,45 @@ GET /forecast/daily-kpi
 }
 ```
 
-### Dipakai di UI
+### Yang harus FS lakukan
+
+Tampilkan hanya untuk Owner:
 
 ```text
-- Dashboard owner
-- Forecast chart
+- Dashboard chart
 - Analisis penjualan
+- Forecast KPI panel
 ```
-
-Owner only.
 
 ---
 
-## 8.13 POST `/ocr/scan-receipt`
+## 7.13 POST `/ocr/scan-receipt`
 
 ### Fungsi
 
 OCR nota/faktur menggunakan Gemini.
 
-### Request
+### Method
 
 ```http
-POST /ocr/scan-receipt
-Content-Type: multipart/form-data
+POST
 ```
 
-Field:
+### Content-Type
 
 ```text
-file
+multipart/form-data
 ```
 
-### Contoh Frontend
+### Body
+
+Bukan JSON. Gunakan form-data.
+
+| Field | Wajib | Tipe | Keterangan |
+|---|---:|---|---|
+| `file` | Ya | File | gambar nota `.jpg`, `.jpeg`, `.png`, `.webp` |
+
+### Request JavaScript
 
 ```javascript
 async function scanReceipt(file) {
@@ -1022,7 +1275,7 @@ async function scanReceipt(file) {
 
   const res = await fetch("http://localhost:8000/ocr/scan-receipt", {
     method: "POST",
-    body: formData,
+    body: formData
   });
 
   if (!res.ok) {
@@ -1034,7 +1287,14 @@ async function scanReceipt(file) {
 }
 ```
 
-### Response
+### Request cURL Windows
+
+```bash
+curl -X POST "http://localhost:8000/ocr/scan-receipt" ^
+  -F "file=@C:\Users\sandi\Downloads\nota.jpg"
+```
+
+### Response 200
 
 ```json
 {
@@ -1063,64 +1323,194 @@ async function scanReceipt(file) {
 }
 ```
 
-### Flow OCR
+### Yang harus FS lakukan
+
+UI harus menampilkan hasil OCR dalam form konfirmasi:
 
 ```text
-User upload nota
-↓
-AI OCR membaca nota
-↓
-UI tampilkan hasil
-↓
-User koreksi manual
-↓
-User klik simpan
-↓
-Backend simpan ke database
+- Nama produk
+- Qty
+- Harga
+- Total
+- Tanggal
+- Supplier/Merchant jika ada
 ```
 
-OCR jangan langsung menyimpan otomatis. Harus ada konfirmasi user.
+Lalu user klik Simpan. Backend baru menyimpan ke database setelah user konfirmasi.
 
 ---
 
-# 9. Contoh Integrasi Backend Express
+# 8. Mapping Endpoint ke UI
 
-Contoh proxy backend Express ke AI service:
+## Dashboard Owner
+
+Gunakan:
+
+```text
+GET /insights/summary
+GET /forecast/daily-kpi
+GET /recommendations/restock-priority?limit=5
+GET /recommendations/top-products?limit=5
+```
+
+Tampilkan:
+
+```text
+- AI Insight
+- Forecast KPI
+- Produk prioritas restock
+- Produk terlaris
+```
+
+## Dashboard Karyawan
+
+Jangan tampilkan profit/laba/insight owner.
+
+Boleh tampilkan:
+
+```text
+- Transaksi hari ini
+- Stok perlu dicek
+- OCR nota
+- Input stok
+```
+
+## Katalog Barang
+
+Gunakan:
+
+```text
+GET /products/search?q=keyword&limit=10
+POST /predict/all
+```
+
+Owner melihat:
+
+```text
+- Fast Moving
+- Restock Priority
+- Profit Category
+```
+
+Karyawan melihat:
+
+```text
+- Fast Moving
+- Stock Safe / Restock Priority
+```
+
+Karyawan tidak melihat profit.
+
+## Detail Produk
+
+Gunakan:
+
+```text
+POST /predict/all
+```
+
+## Rekomendasi Stok
+
+Gunakan:
+
+```text
+GET /recommendations/restock-priority?limit=10
+```
+
+## Analisis Profit
+
+Gunakan:
+
+```text
+GET /recommendations/high-profit?limit=10
+POST /predict/profit
+```
+
+Owner only.
+
+## Input Stok OCR
+
+Gunakan:
+
+```text
+POST /ocr/scan-receipt
+```
+
+Setelah OCR, simpan ke backend/database, bukan ke AI.
+
+---
+
+# 9. Role Access
+
+| Fitur | Owner | Karyawan |
+|---|---:|---:|
+| Search produk | Ya | Ya |
+| Predict fast moving | Ya | Ya |
+| Predict low stock | Ya | Ya |
+| Predict profit | Ya | Tidak |
+| Top product | Ya | Terbatas |
+| High profit recommendation | Ya | Tidak |
+| Restock recommendation | Ya | Terbatas |
+| Insight summary | Ya | Tidak |
+| Forecast KPI | Ya | Tidak |
+| OCR nota | Ya | Ya |
+| Input stok | Ya | Ya |
+| Catat transaksi | Ya | Ya |
+| Laporan keuangan | Ya | Tidak |
+
+Karyawan jangan melihat:
+
+```text
+- HPP
+- profit ratio
+- estimated profit percent
+- profit category
+- laba
+- margin
+- high profit recommendation
+- insight strategis
+```
+
+---
+
+# 10. Contoh Backend Express Proxy Lengkap
 
 ```javascript
 import express from "express";
 import axios from "axios";
+import multer from "multer";
+import FormData from "form-data";
 
 const router = express.Router();
+const upload = multer();
 
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL || "http://localhost:8000";
+
+function handleAiError(error, res) {
+  return res.status(error.response?.status || 500).json({
+    message: "Gagal memanggil AI service",
+    error: error.response?.data || error.message
+  });
+}
 
 router.get("/ai/health", async (req, res) => {
   try {
     const response = await axios.get(`${AI_API_BASE_URL}/health`);
     res.json(response.data);
   } catch (error) {
-    res.status(error.response?.status || 500).json({
-      message: "AI service tidak tersedia",
-      error: error.response?.data || error.message,
-    });
+    handleAiError(error, res);
   }
 });
 
 router.get("/ai/search-products", async (req, res) => {
   try {
     const { q, limit = 10 } = req.query;
-
     const response = await axios.get(`${AI_API_BASE_URL}/products/search`, {
-      params: { q, limit },
+      params: { q, limit }
     });
-
     res.json(response.data);
   } catch (error) {
-    res.status(error.response?.status || 500).json({
-      message: "Gagal mencari produk dari AI service",
-      error: error.response?.data || error.message,
-    });
+    handleAiError(error, res);
   }
 });
 
@@ -1129,27 +1519,106 @@ router.post("/ai/predict-all", async (req, res) => {
     const response = await axios.post(`${AI_API_BASE_URL}/predict/all`, req.body);
     res.json(response.data);
   } catch (error) {
-    res.status(error.response?.status || 500).json({
-      message: "Gagal memanggil AI prediction",
-      error: error.response?.data || error.message,
-    });
+    handleAiError(error, res);
   }
 });
 
-router.get("/ai/restock-recommendations", async (req, res) => {
+router.post("/ai/predict-fast-moving", async (req, res) => {
+  try {
+    const response = await axios.post(`${AI_API_BASE_URL}/predict/fast-moving`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.post("/ai/predict-low-stock", async (req, res) => {
+  try {
+    const response = await axios.post(`${AI_API_BASE_URL}/predict/low-stock`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.post("/ai/predict-profit", async (req, res) => {
+  try {
+    const response = await axios.post(`${AI_API_BASE_URL}/predict/profit`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.get("/ai/recommendations/top-products", async (req, res) => {
   try {
     const { limit = 10 } = req.query;
+    const response = await axios.get(`${AI_API_BASE_URL}/recommendations/top-products`, {
+      params: { limit }
+    });
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
 
+router.get("/ai/recommendations/high-profit", async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    const response = await axios.get(`${AI_API_BASE_URL}/recommendations/high-profit`, {
+      params: { limit }
+    });
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.get("/ai/recommendations/restock-priority", async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
     const response = await axios.get(`${AI_API_BASE_URL}/recommendations/restock-priority`, {
-      params: { limit },
+      params: { limit }
+    });
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.get("/ai/insights/summary", async (req, res) => {
+  try {
+    const response = await axios.get(`${AI_API_BASE_URL}/insights/summary`);
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.get("/ai/forecast/daily-kpi", async (req, res) => {
+  try {
+    const response = await axios.get(`${AI_API_BASE_URL}/forecast/daily-kpi`);
+    res.json(response.data);
+  } catch (error) {
+    handleAiError(error, res);
+  }
+});
+
+router.post("/ai/ocr/scan-receipt", upload.single("file"), async (req, res) => {
+  try {
+    const form = new FormData();
+    form.append("file", req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype
+    });
+
+    const response = await axios.post(`${AI_API_BASE_URL}/ocr/scan-receipt`, form, {
+      headers: form.getHeaders()
     });
 
     res.json(response.data);
   } catch (error) {
-    res.status(error.response?.status || 500).json({
-      message: "Gagal mengambil rekomendasi restock",
-      error: error.response?.data || error.message,
-    });
+    handleAiError(error, res);
   }
 });
 
@@ -1158,34 +1627,26 @@ export default router;
 
 ---
 
-# 10. Contoh Integrasi Frontend
+# 11. Contoh Frontend Flow
 
-## Search produk
+## Search produk dan predict
 
 ```javascript
 async function searchProducts(keyword) {
   const res = await fetch(`/api/ai/search-products?q=${encodeURIComponent(keyword)}&limit=10`);
-
-  if (!res.ok) {
-    throw new Error("Gagal mencari produk");
-  }
-
+  if (!res.ok) throw new Error("Gagal mencari produk");
   return await res.json();
 }
-```
 
-## Predict all
-
-```javascript
 async function predictProduct(kodeBarang) {
   const res = await fetch("/api/ai/predict-all", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      kode_barang: kodeBarang,
-    }),
+      kode_barang: kodeBarang
+    })
   });
 
   if (!res.ok) {
@@ -1200,17 +1661,18 @@ async function predictProduct(kodeBarang) {
 ## OCR upload
 
 ```javascript
-async function uploadReceipt(file) {
+async function scanReceipt(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch("/api/ai/ocr", {
+  const res = await fetch("/api/ai/ocr/scan-receipt", {
     method: "POST",
-    body: formData,
+    body: formData
   });
 
   if (!res.ok) {
-    throw new Error("Gagal membaca nota");
+    const err = await res.json();
+    throw new Error(err.message || "OCR gagal");
   }
 
   return await res.json();
@@ -1219,79 +1681,21 @@ async function uploadReceipt(file) {
 
 ---
 
-# 11. Role Access Owner dan Karyawan
+# 12. Automated Testing
 
-Rekomendasi akses:
-
-| Fitur | Owner | Karyawan |
-|---|---:|---:|
-| Search produk | Ya | Ya |
-| Fast Moving | Ya | Ya |
-| Stock Safe / Restock Priority | Ya | Ya |
-| Profit Prediction | Ya | Tidak |
-| High Profit Recommendation | Ya | Tidak |
-| Restock Recommendation | Ya | Terbatas |
-| Insight Summary | Ya | Tidak |
-| Forecast KPI | Ya | Tidak |
-| OCR Nota | Ya | Ya |
-| Catat transaksi | Ya | Ya |
-| Input stok | Ya | Ya |
-| Keuangan/laba/margin | Ya | Tidak |
-
-Karyawan jangan melihat:
-
-```text
-- HPP
-- profit ratio
-- profit percent
-- laba
-- margin
-- insight strategis owner
-```
-
----
-
-# 12. OCR Nota Manual
-
-OCR adalah fitur manual.
-
-Flow:
-
-```text
-Upload nota
-↓
-AI membaca nota
-↓
-UI menampilkan hasil OCR
-↓
-User memeriksa dan mengedit jika ada salah
-↓
-User klik Simpan
-↓
-Backend menyimpan ke database
-```
-
-Jangan membuat OCR langsung menyimpan otomatis ke database tanpa konfirmasi.
-
----
-
-# 13. Automated Testing
-
-Pastikan API jalan dulu:
+Jalankan API:
 
 ```bat
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Buka terminal kedua:
+Terminal kedua:
 
 ```bat
-cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
-venv\Scripts\activate
 python tests\auto_test_api.py --limit 20
 ```
 
-Expected result:
+Expected:
 
 ```text
 Passed : 121
@@ -1300,7 +1704,7 @@ Skipped: 1
 Status : PASSED
 ```
 
-OCR skipped jika tidak memberikan gambar nota. Untuk test OCR juga:
+Test OCR:
 
 ```bat
 python tests\auto_test_api.py --limit 20 --ocr-image "C:\Users\sandi\Downloads\nota.jpg" --require-ocr
@@ -1308,181 +1712,108 @@ python tests\auto_test_api.py --limit 20 --ocr-image "C:\Users\sandi\Downloads\n
 
 ---
 
-# 14. Docker dan Deploy
+# 13. Checklist Implementasi FS
 
-## Build Docker
-
-```bat
-docker build -t tata-arta-ai .
-```
-
-## Run Docker
-
-```bat
-docker run --env-file .env -p 8000:8000 tata-arta-ai
-```
-
-## Docker Compose
-
-```bat
-docker compose up --build
-```
-
-## Render
-
-Jika deploy ke Render:
-
-1. Root directory:
-   ```text
-   Ai
-   ```
-2. Environment:
-   ```text
-   Docker
-   ```
-3. Environment variables:
-   ```env
-   GEMINI_API_KEY=isi_key_asli_di_render
-   GEMINI_OCR_MODEL=gemini-3.5-flash
-   APP_ENV=production
-   ```
-4. Deploy.
-
----
-
-# 15. Troubleshooting
-
-## Error `No module named src`
-
-Pastikan menjalankan command dari folder `Ai`:
-
-```bat
-cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
-```
-
-Lalu jalankan ulang.
-
-## Error `No module named pandas`
-
-Dependency belum terinstall di venv yang aktif:
-
-```bat
-pip install -r requirements.txt
-```
-
-## Error TensorFlow di Python 3.14
-
-Gunakan Python 3.11:
-
-```bat
-py -3.11 -m venv venv
-```
-
-## Error `pkg_resources`
-
-```bat
-pip uninstall setuptools -y
-pip install "setuptools<82"
-```
-
-## Model false di `/health`
-
-Cek folder model:
-
-```bat
-dir models
-```
-
-Harus ada:
+## Backend
 
 ```text
-fast_moving_model.keras
-fast_moving_preprocessor.joblib
-low_stock_model.keras
-low_stock_preprocessor.joblib
-profit_model.keras
-profit_preprocessor.joblib
+[ ] Set AI_API_BASE_URL
+[ ] Buat proxy route ke AI
+[ ] Pastikan database produk punya kode_barang
+[ ] Hit AI pakai kode_barang jika produk ada
+[ ] Hit /products/search untuk autocomplete
+[ ] Untuk produk baru, kirim fitur lengkap
+[ ] Batasi profit endpoint untuk owner
+[ ] OCR route menggunakan multipart/form-data
+[ ] Simpan hasil OCR hanya setelah user konfirmasi
 ```
 
-## Produk tidak ditemukan
-
-Jika request:
-
-```json
-{
-  "nama_barang": "Produk Random"
-}
-```
-
-lalu AI return 404, solusinya:
+## Frontend
 
 ```text
-- Search produk dulu dengan /products/search
-- Kirim nama produk lengkap
-- Atau kirim fitur lengkap jika produk baru
+[ ] Buat search/autocomplete produk
+[ ] Tampilkan matched_product dari AI
+[ ] Tampilkan badge Fast Moving/Normal/Slow Moving
+[ ] Tampilkan badge Stock Safe/Restock Priority
+[ ] Sembunyikan profit dari karyawan
+[ ] Buat dashboard owner untuk insight/forecast/recommendation
+[ ] Buat OCR upload dan preview hasil OCR
+[ ] Buat form konfirmasi OCR sebelum simpan
+[ ] Tampilkan loading/error/empty state
 ```
 
-## Keyword umum menghasilkan produk yang tidak sesuai
-
-Contoh keyword:
+## Role
 
 ```text
-beras
-aqua
-susu
-minyak
-```
-
-Solusi:
-
-```text
-Gunakan /products/search dulu, user pilih produk, lalu predict pakai kode_barang.
+[ ] Owner bisa lihat profit, insight, forecast, high profit recommendation
+[ ] Karyawan tidak bisa lihat profit/laba/margin/HPP
+[ ] Karyawan boleh input transaksi, input stok, OCR
 ```
 
 ---
 
-# 16. Checklist Sebelum Demo/Deploy
+# 14. Jawaban Singkat untuk FS
+
+## Endpoint insight, forecast, dan recommendations perlu body opo?
 
 ```text
-API bisa jalan
-/health status ok
-models semua true
-/products/search bisa dipakai
-/predict/all by kode_barang bisa
-/predict/all by nama_barang bisa
-recommendations bisa
-insights bisa
-forecast bisa
-OCR bisa jika GEMINI_API_KEY aktif
-Automated test PASSED
-.env tidak ikut GitHub
-AI_API_BASE_URL sudah diset di backend FS
-Role owner/karyawan sudah dibatasi
+Tidak perlu body karena semuanya GET.
+Kalau ada input, pakai query params seperti ?limit=10.
+```
+
+## Predict endpoint perlu body opo?
+
+```text
+POST /predict/all butuh JSON body.
+Paling aman: { "kode_barang": "R1284" }
+Bisa juga: { "nama_barang": "NAMA PRODUK LENGKAP" }
+Produk baru: kirim fitur lengkap.
+```
+
+## OCR endpoint perlu body opo?
+
+```text
+POST /ocr/scan-receipt pakai multipart/form-data.
+Field file wajib bernama "file".
+```
+
+## Kalau data beda dari DS?
+
+```text
+Tidak masalah. Dataset DS adalah training awal. Database FS jadi sumber data utama. Backend harus mengirim kode_barang/nama lengkap/fitur lengkap ke AI.
+```
+
+## Kalau produk baru?
+
+```text
+Kirim fitur lengkap. Kalau belum ada histori transaksi, tampilkan estimasi awal/data belum cukup.
 ```
 
 ---
 
-# 17. Ringkasan Paling Penting untuk FS
-
-Yang paling penting:
+# 15. Endpoint Paling Sering Dipakai
 
 ```text
-1. Untuk produk database, panggil AI pakai kode_barang.
-2. Untuk input bebas, search dulu pakai /products/search.
-3. Jangan langsung predict dari keyword pendek.
-4. Untuk produk baru, kirim fitur lengkap.
-5. Kalau transaksi belum cukup, tampilkan "estimasi awal".
-6. Profit dan insight strategis hanya untuk owner.
-7. OCR manual: scan → review → simpan.
-8. AI service tidak menyimpan data utama; database tetap milik fullstack.
-```
-
-Endpoint paling sering dipakai:
-
-```text
-GET  /products/search
+GET  /products/search?q=keyword&limit=10
 POST /predict/all
-GET  /recommendations/restock-priority
+GET  /recommendations/restock-priority?limit=10
 GET  /insights/summary
+GET  /forecast/daily-kpi
 POST /ocr/scan-receipt
+```
+
+---
+
+# 16. Kesimpulan
+
+Untuk FS, aturan paling penting:
+
+```text
+1. Produk dari database → kirim kode_barang.
+2. User search keyword → panggil /products/search dulu.
+3. Jangan langsung predict dari keyword pendek.
+4. Produk baru → kirim fitur lengkap.
+5. Profit/insight strategis → Owner only.
+6. OCR → manual review dulu, baru simpan.
+7. AI tidak menyimpan data utama; database tetap milik backend fullstack.
 ```
