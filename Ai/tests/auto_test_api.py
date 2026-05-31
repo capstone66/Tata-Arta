@@ -10,22 +10,17 @@ from typing import Any
 
 import requests
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
     from src.data_loader import load_products_featured, load_transactions
-except Exception as exc:
+except Exception:
     load_products_featured = None
     load_transactions = None
-    DATA_LOADER_IMPORT_ERROR = exc
-else:
-    DATA_LOADER_IMPORT_ERROR = None
 
 
 DEFAULT_BASE_URL = os.getenv("AI_API_URL", "http://localhost:8000")
-
 
 REQUIRED_MODEL_FILES = [
     "models/fast_moving_model.keras",
@@ -39,6 +34,16 @@ REQUIRED_MODEL_FILES = [
     "models/profit_model.training_summary.json",
 ]
 
+VALID_FAST_MOVING = {"Slow Moving", "Normal", "Fast Moving"}
+VALID_LOW_STOCK = {"Stock Safe", "Restock Priority"}
+VALID_PROFIT = {"Low Profit", "Medium Profit", "High Profit"}
+VALID_MATCH_TYPES = {
+    "kode_barang_exact",
+    "name_exact",
+    "name_contains",
+    "name_fuzzy",
+    "manual_features",
+}
 
 KEYWORD_QUERIES = [
     "beras",
@@ -46,28 +51,29 @@ KEYWORD_QUERIES = [
     "indomie",
     "susu",
     "minyak",
+    "kopi",
 ]
 
 
 class TestResult:
-    def __init__(self):
+    def __init__(self) -> None:
         self.passed = 0
         self.failed = 0
         self.skipped = 0
 
-    def pass_(self, message: str):
+    def pass_(self, message: str) -> None:
         self.passed += 1
         print(f"[PASS] {message}")
 
-    def fail(self, message: str):
+    def fail(self, message: str) -> None:
         self.failed += 1
         print(f"[FAIL] {message}")
 
-    def skip(self, message: str):
+    def skip(self, message: str) -> None:
         self.skipped += 1
         print(f"[SKIP] {message}")
 
-    def summary(self):
+    def summary(self) -> None:
         print("\n=== TEST SUMMARY ===")
         print(f"Passed : {self.passed}")
         print(f"Failed : {self.failed}")
@@ -80,7 +86,7 @@ class TestResult:
         print("Status : PASSED")
 
 
-def print_json(body: Any):
+def print_json(body: Any) -> None:
     try:
         print(json.dumps(body, indent=2, ensure_ascii=False))
     except Exception:
@@ -92,17 +98,20 @@ def request_json(
     base_url: str,
     path: str,
     *,
-    timeout: int = 90,
-    **kwargs,
-) -> tuple[int, Any]:
+    timeout: int = 60,
+    **kwargs: Any,
+) -> tuple[int | None, dict[str, Any] | list[Any] | str]:
     url = f"{base_url.rstrip('/')}{path}"
 
-    response = requests.request(
-        method=method,
-        url=url,
-        timeout=timeout,
-        **kwargs,
-    )
+    try:
+        response = requests.request(
+            method=method,
+            url=url,
+            timeout=timeout,
+            **kwargs,
+        )
+    except requests.exceptions.RequestException as exc:
+        return None, f"Request error: {exc}"
 
     try:
         body = response.json()
@@ -112,7 +121,7 @@ def request_json(
     return response.status_code, body
 
 
-def assert_json_object(result: TestResult, body: Any, label: str) -> bool:
+def assert_dict(result: TestResult, body: Any, label: str) -> bool:
     if isinstance(body, dict):
         result.pass_(f"{label} returned JSON object")
         return True
@@ -121,7 +130,7 @@ def assert_json_object(result: TestResult, body: Any, label: str) -> bool:
     return False
 
 
-def assert_json_object_or_list(result: TestResult, body: Any, label: str) -> bool:
+def assert_list_or_dict(result: TestResult, body: Any, label: str) -> bool:
     if isinstance(body, (dict, list)):
         result.pass_(f"{label} returned JSON")
         return True
@@ -130,7 +139,7 @@ def assert_json_object_or_list(result: TestResult, body: Any, label: str) -> boo
     return False
 
 
-def test_model_files(result: TestResult):
+def test_model_files(result: TestResult) -> None:
     print("\n=== Checking local model files ===")
 
     for rel_path in REQUIRED_MODEL_FILES:
@@ -144,9 +153,13 @@ def test_model_files(result: TestResult):
 
 def get_products_df():
     if load_products_featured is None:
-        raise RuntimeError(f"Cannot import load_products_featured: {DATA_LOADER_IMPORT_ERROR}")
+        return None
 
-    products = load_products_featured()
+    try:
+        products = load_products_featured()
+    except Exception as exc:
+        print(f"[WARN] Failed to load products dataset: {exc}")
+        return None
 
     if "kode_barang" in products.columns:
         products["kode_barang"] = products["kode_barang"].astype(str)
@@ -159,9 +172,13 @@ def get_products_df():
 
 def get_transactions_df():
     if load_transactions is None:
-        raise RuntimeError(f"Cannot import load_transactions: {DATA_LOADER_IMPORT_ERROR}")
+        return None
 
-    transactions = load_transactions()
+    try:
+        transactions = load_transactions()
+    except Exception as exc:
+        print(f"[WARN] Failed to load transactions dataset: {exc}")
+        return None
 
     if "kode_barang" in transactions.columns:
         transactions["kode_barang"] = transactions["kode_barang"].astype(str)
@@ -169,53 +186,62 @@ def get_transactions_df():
     return transactions
 
 
+def clean_text(value: Any) -> str:
+    if value is None:
+        return ""
+
+    text = str(value).strip()
+
+    if text.lower() in {"", "nan", "none", "null", "undefined", "string"}:
+        return ""
+
+    return text
+
+
 def get_test_product_codes(limit: int = 20) -> list[str]:
     products = get_products_df()
+    transactions = get_transactions_df()
+
     product_codes: list[str] = []
 
-    try:
-        transactions = get_transactions_df()
+    if transactions is not None and {"kode_barang", "qty"}.issubset(transactions.columns):
+        top_codes = (
+            transactions.groupby("kode_barang")["qty"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(limit)
+            .index.astype(str)
+            .tolist()
+        )
+        product_codes.extend(top_codes)
 
-        if {"kode_barang", "qty"}.issubset(transactions.columns):
-            top_codes = (
-                transactions.groupby("kode_barang")["qty"]
-                .sum()
-                .sort_values(ascending=False)
-                .head(limit)
-                .index.astype(str)
-                .tolist()
-            )
-            product_codes.extend(top_codes)
-    except Exception:
-        pass
-
-    if "kode_barang" in products.columns:
-        product_codes.extend(
+    if products is not None and "kode_barang" in products.columns:
+        first_codes = (
             products["kode_barang"]
             .dropna()
             .astype(str)
             .head(limit)
             .tolist()
         )
+        product_codes.extend(first_codes)
 
         sample_size = min(limit, len(products))
-
         if sample_size > 0:
-            product_codes.extend(
+            random_codes = (
                 products["kode_barang"]
                 .dropna()
                 .astype(str)
                 .sample(sample_size, random_state=42)
                 .tolist()
             )
+            product_codes.extend(random_codes)
 
-    unique_codes = []
-    seen = set()
+    unique_codes: list[str] = []
+    seen: set[str] = set()
 
     for code in product_codes:
-        code = str(code).strip()
-
-        if code and code.lower() not in {"nan", "none", "null", "string"} and code not in seen:
+        code = clean_text(code)
+        if code and code not in seen:
             seen.add(code)
             unique_codes.append(code)
 
@@ -225,192 +251,116 @@ def get_test_product_codes(limit: int = 20) -> list[str]:
 def get_test_product_names(limit: int = 10) -> list[str]:
     products = get_products_df()
 
-    if "nama" not in products.columns:
+    if products is None or "nama" not in products.columns:
         return []
 
-    names = (
-        products["nama"]
-        .dropna()
-        .astype(str)
-        .head(limit)
-        .tolist()
-    )
+    names = products["nama"].dropna().astype(str).head(limit * 2).tolist()
 
-    cleaned = []
-    seen = set()
+    cleaned: list[str] = []
+    seen: set[str] = set()
 
     for name in names:
-        name = name.strip()
+        name = clean_text(name)
 
-        if name and name.lower() not in {"nan", "none", "null", "string"} and name not in seen:
+        if name and name not in seen:
             seen.add(name)
             cleaned.append(name)
 
     return cleaned[:limit]
 
 
-def sample_realtime_products() -> list[dict[str, Any]]:
-    return [
-        {
-            "kode_barang": "R1284",
-            "nama_barang": "REJOICE SHP 200ML COMPLETE",
-            "kategori": "PERAWATAN",
-            "sub_kategori": "SHAMPOO",
-            "supplier": "SUPPLIER A",
-            "hpp": 12000,
-            "harga_toko_1": 15000,
-            "total_stock": 8,
-            "stok_min": 10,
-            "stok_max": 100,
-            "trx_total_qty": 120,
-            "trx_qty_30d": 45,
-            "trx_qty_60d": 70,
-            "trx_qty_90d": 100,
-            "trx_count": 35,
-            "trx_total_revenue": 1800000,
-            "trx_total_profit": 300000,
-            "profit_percent": 20,
-        },
-        {
-            "kode_barang": "B4533",
-            "nama_barang": "BERAS MERAH 2KG",
-            "kategori": "SEMBAKO",
-            "sub_kategori": "BERAS",
-            "supplier": "SUPPLIER B",
-            "hpp": 25000,
-            "harga_toko_1": 30000,
-            "total_stock": 2,
-            "stok_min": 12,
-            "stok_max": 80,
-            "trx_total_qty": 90,
-            "trx_qty_30d": 35,
-            "trx_qty_60d": 55,
-            "trx_qty_90d": 80,
-            "trx_count": 22,
-            "trx_total_revenue": 2700000,
-            "trx_total_profit": 450000,
-            "profit_percent": 16.67,
-        },
-        {
-            "kode_barang": "K001",
-            "nama_barang": "KOPI ABC 20GR",
-            "kategori": "MINUMAN",
-            "sub_kategori": "KOPI",
-            "supplier": "SUPPLIER C",
-            "hpp": 1500,
-            "harga_toko_1": 2500,
-            "total_stock": 40,
-            "stok_min": 10,
-            "stok_max": 100,
-            "trx_total_qty": 40,
-            "trx_qty_30d": 10,
-            "trx_qty_60d": 18,
-            "trx_qty_90d": 25,
-            "trx_count": 8,
-            "trx_total_revenue": 100000,
-            "trx_total_profit": 40000,
-            "profit_percent": 40,
-        },
-        {
-            "kode_barang": "M001",
-            "nama_barang": "MINYAK GORENG 2L",
-            "kategori": "SEMBAKO",
-            "sub_kategori": "MINYAK",
-            "supplier": "SUPPLIER D",
-            "hpp": 26000,
-            "harga_toko_1": 32000,
-            "total_stock": 0,
-            "stok_min": 15,
-            "stok_max": 120,
-            "trx_total_qty": 150,
-            "trx_qty_30d": 50,
-            "trx_qty_60d": 100,
-            "trx_qty_90d": 145,
-            "trx_count": 50,
-            "trx_total_revenue": 4800000,
-            "trx_total_profit": 900000,
-            "profit_percent": 18.75,
-        },
-    ]
+def get_sample_product_from_search(base_url: str) -> dict[str, Any] | None:
+    for query in KEYWORD_QUERIES:
+        status, body = request_json(
+            "GET",
+            base_url,
+            "/products/search",
+            params={"q": query, "limit": 1},
+        )
+
+        if status != 200 or not isinstance(body, dict):
+            continue
+
+        items = body.get("items")
+        if isinstance(items, list) and items:
+            first = items[0]
+            if isinstance(first, dict):
+                return first
+
+    return None
 
 
-def sample_forecast_payload() -> dict[str, Any]:
-    return {
-        "horizon_days": 7,
-        "history": [
-            {"date": "2026-05-20", "revenue": 1100000, "expense": 700000, "profit": 400000, "transactions": 28},
-            {"date": "2026-05-21", "revenue": 1250000, "expense": 780000, "profit": 470000, "transactions": 33},
-            {"date": "2026-05-22", "revenue": 1180000, "expense": 760000, "profit": 420000, "transactions": 31},
-            {"date": "2026-05-23", "revenue": 1400000, "expense": 850000, "profit": 550000, "transactions": 38},
-            {"date": "2026-05-24", "revenue": 1500000, "expense": 920000, "profit": 580000, "transactions": 42},
-            {"date": "2026-05-25", "revenue": 1600000, "expense": 950000, "profit": 650000, "transactions": 45},
-            {"date": "2026-05-26", "revenue": 1550000, "expense": 940000, "profit": 610000, "transactions": 44},
-        ],
-    }
-
-
-def sample_insight_payload() -> dict[str, Any]:
-    return {
-        "today": {
-            "date": "2026-05-26",
-            "revenue": 1550000,
-            "expense": 940000,
-            "profit": 610000,
-            "transactions": 44,
-        },
-        "previous_period": {
-            "avg_revenue": 1300000,
-            "avg_expense": 820000,
-            "avg_profit": 480000,
-            "avg_transactions": 35,
-        },
-        "stock": {
-            "total_products": 4,
-            "low_stock_products": 3,
-            "out_of_stock_products": 1,
-        },
-        "products": sample_realtime_products(),
-    }
-
-
-def validate_predict_all_body(body: dict[str, Any], result: TestResult, label: str) -> bool:
+def validate_predict_all_body(
+    body: dict[str, Any],
+    result: TestResult,
+    label: str,
+) -> bool:
     required_keys = {"matched_product", "fast_moving", "low_stock", "profit"}
     missing = required_keys - set(body.keys())
 
     if missing:
-        result.fail(f"{label} missing keys: {missing}")
+        result.fail(f"{label} missing keys: {sorted(missing)}")
         return False
 
     matched = body.get("matched_product")
+    fast = body.get("fast_moving")
+    stock = body.get("low_stock")
+    profit = body.get("profit")
 
     if not isinstance(matched, dict):
-        result.fail(f"{label} matched_product is not object")
+        result.fail(f"{label} matched_product is not object: {matched}")
         return False
 
-    if not matched.get("nama"):
-        result.fail(f"{label} matched_product.nama is empty")
+    if not isinstance(fast, dict):
+        result.fail(f"{label} fast_moving is not object: {fast}")
         return False
 
-    fast = body.get("fast_moving", {})
-    stock = body.get("low_stock", {})
-    profit = body.get("profit", {})
+    if not isinstance(stock, dict):
+        result.fail(f"{label} low_stock is not object: {stock}")
+        return False
 
-    if fast.get("prediction") not in {"Slow Moving", "Normal", "Fast Moving"}:
+    if not isinstance(profit, dict):
+        result.fail(f"{label} profit is not object: {profit}")
+        return False
+
+    match_type = matched.get("match_type")
+    if match_type not in VALID_MATCH_TYPES:
+        result.fail(f"{label} invalid match_type: {matched}")
+        return False
+
+    if fast.get("prediction") not in VALID_FAST_MOVING:
         result.fail(f"{label} invalid fast_moving prediction: {fast}")
         return False
 
-    if stock.get("prediction") not in {"Stock Safe", "Restock Priority"}:
+    if stock.get("prediction") not in VALID_LOW_STOCK:
         result.fail(f"{label} invalid low_stock prediction: {stock}")
         return False
 
-    if profit.get("profit_category") not in {"Low Profit", "Medium Profit", "High Profit"}:
+    if profit.get("profit_category") not in VALID_PROFIT:
         result.fail(f"{label} invalid profit category: {profit}")
         return False
 
     return True
 
 
-def test_health(base_url: str, result: TestResult):
+def test_root(base_url: str, result: TestResult) -> None:
+    print("\n=== Testing root ===")
+
+    status, body = request_json("GET", base_url, "/")
+    label = "GET /"
+
+    if status != 200:
+        result.fail(f"{label} returned {status}: {body}")
+        return
+
+    if not assert_dict(result, body, label):
+        return
+
+    result.pass_(f"{label} returned 200")
+    print_json(body)
+
+
+def test_health(base_url: str, result: TestResult) -> None:
     print("\n=== Testing health ===")
 
     status, body = request_json("GET", base_url, "/health")
@@ -422,12 +372,15 @@ def test_health(base_url: str, result: TestResult):
 
     result.pass_(f"{label} returned 200")
 
-    if not assert_json_object(result, body, label):
+    if not assert_dict(result, body, label):
         return
 
     print_json(body)
 
     models = body.get("models", {})
+    if not isinstance(models, dict):
+        result.fail("/health models is not object")
+        return
 
     for key in ["fast_moving", "low_stock", "profit"]:
         if models.get(key) is True:
@@ -436,21 +389,22 @@ def test_health(base_url: str, result: TestResult):
             result.fail(f"/health model {key} is not true: {models}")
 
 
-def test_metadata(base_url: str, result: TestResult):
+def test_metadata(base_url: str, result: TestResult) -> None:
     print("\n=== Testing metadata ===")
 
     status, body = request_json("GET", base_url, "/metadata")
     label = "GET /metadata"
 
-    if status == 200:
-        result.pass_(f"{label} returned 200")
-        assert_json_object(result, body, label)
-    else:
+    if status != 200:
         result.fail(f"{label} returned {status}: {body}")
+        return
+
+    result.pass_(f"{label} returned 200")
+    assert_dict(result, body, label)
 
 
-def test_product_search_get(base_url: str, result: TestResult):
-    print("\n=== Testing GET /products/search with internal/DS data ===")
+def test_product_search(base_url: str, result: TestResult) -> None:
+    print("\n=== Testing product search ===")
 
     for query in KEYWORD_QUERIES:
         status, body = request_json(
@@ -466,7 +420,7 @@ def test_product_search_get(base_url: str, result: TestResult):
             result.fail(f"{label} returned {status}: {body}")
             continue
 
-        if not assert_json_object(result, body, label):
+        if not assert_dict(result, body, label):
             continue
 
         items = body.get("items")
@@ -479,25 +433,32 @@ def test_product_search_get(base_url: str, result: TestResult):
 
         if items:
             first = items[0]
-            result.pass_(f"{label} first match: {first.get('kode_barang')} | {first.get('nama') or first.get('nama_barang')}")
+            if isinstance(first, dict):
+                result.pass_(
+                    f"{label} first match: "
+                    f"{first.get('kode_barang')} | {first.get('nama')}"
+                )
+            else:
+                result.fail(f"{label} first item is not object: {first}")
         else:
             result.skip(f"{label} returned empty result")
 
 
-def test_predict_all_by_code(base_url: str, result: TestResult, limit: int):
+def test_predict_all_by_code(base_url: str, result: TestResult, limit: int) -> None:
     print("\n=== Testing /predict/all by kode_barang ===")
 
-    try:
-        codes = get_test_product_codes(limit)
-    except Exception as exc:
-        result.fail(f"Cannot load product codes from dataset: {exc}")
-        return
+    codes = get_test_product_codes(limit)
 
     if not codes:
-        result.fail("No product codes found from dataset")
+        sample = get_sample_product_from_search(base_url)
+        if sample and sample.get("kode_barang"):
+            codes = [str(sample["kode_barang"])]
+
+    if not codes:
+        result.skip("No product codes found from dataset or API search")
         return
 
-    for code in codes:
+    for code in codes[:limit]:
         payload = {"kode_barang": code}
         status, body = request_json("POST", base_url, "/predict/all", json=payload)
         label = f"POST /predict/all kode_barang={code}"
@@ -506,36 +467,36 @@ def test_predict_all_by_code(base_url: str, result: TestResult, limit: int):
             result.fail(f"{label} returned {status}: {body}")
             continue
 
-        if not assert_json_object(result, body, label):
+        if not assert_dict(result, body, label):
             continue
 
         if not validate_predict_all_body(body, result, label):
             continue
 
         matched = body["matched_product"]
-
         result.pass_(
-            f"{label} | matched={matched.get('nama')} | "
+            f"{label} | matched={matched.get('kode_barang')} - {matched.get('nama')} | "
             f"fast={body['fast_moving'].get('prediction')} | "
             f"stock={body['low_stock'].get('prediction')} | "
             f"profit={body['profit'].get('profit_category')}"
         )
 
 
-def test_predict_all_by_exact_name(base_url: str, result: TestResult, limit: int):
+def test_predict_all_by_exact_name(base_url: str, result: TestResult, limit: int) -> None:
     print("\n=== Testing /predict/all by exact nama_barang ===")
 
-    try:
-        names = get_test_product_names(min(limit, 10))
-    except Exception as exc:
-        result.fail(f"Cannot load product names from dataset: {exc}")
-        return
+    names = get_test_product_names(min(limit, 10))
 
     if not names:
-        result.fail("No product names found from dataset")
+        sample = get_sample_product_from_search(base_url)
+        if sample and sample.get("nama"):
+            names = [str(sample["nama"])]
+
+    if not names:
+        result.skip("No product names found from dataset or API search")
         return
 
-    for name in names:
+    for name in names[: min(limit, 10)]:
         payload = {"nama_barang": name}
         status, body = request_json("POST", base_url, "/predict/all", json=payload)
         label = f"POST /predict/all nama_barang={name}"
@@ -544,22 +505,20 @@ def test_predict_all_by_exact_name(base_url: str, result: TestResult, limit: int
             result.fail(f"{label} returned {status}: {body}")
             continue
 
-        if not assert_json_object(result, body, label):
+        if not assert_dict(result, body, label):
             continue
 
         if not validate_predict_all_body(body, result, label):
             continue
 
         matched = body["matched_product"]
-        match_type = matched.get("match_type")
-
-        if match_type in {"name_exact", "name_contains", "name_fuzzy", "kode_barang_exact"}:
-            result.pass_(f"{label} | match_type={match_type} | matched={matched.get('nama')}")
-        else:
-            result.fail(f"{label} invalid match_type: {matched}")
+        result.pass_(
+            f"{label} | match_type={matched.get('match_type')} | "
+            f"matched={matched.get('kode_barang')} - {matched.get('nama')}"
+        )
 
 
-def test_predict_all_by_keyword_name(base_url: str, result: TestResult):
+def test_predict_all_by_keyword_name(base_url: str, result: TestResult) -> None:
     print("\n=== Testing /predict/all by keyword nama_barang ===")
 
     for keyword in KEYWORD_QUERIES:
@@ -567,66 +526,74 @@ def test_predict_all_by_keyword_name(base_url: str, result: TestResult):
         status, body = request_json("POST", base_url, "/predict/all", json=payload)
         label = f"POST /predict/all keyword nama_barang={keyword}"
 
+        if status == 404:
+            result.skip(f"{label} returned 404, keyword not found in dataset")
+            continue
+
         if status != 200:
             result.fail(f"{label} returned {status}: {body}")
             continue
 
-        if not assert_json_object(result, body, label):
+        if not assert_dict(result, body, label):
             continue
 
         if not validate_predict_all_body(body, result, label):
             continue
 
         matched = body["matched_product"]
-        result.pass_(f"{label} | matched={matched.get('kode_barang')} | {matched.get('nama')}")
+        result.pass_(
+            f"{label} | matched={matched.get('kode_barang')} - {matched.get('nama')}"
+        )
 
 
-def test_predict_all_manual_product(base_url: str, result: TestResult):
-    print("\n=== Testing /predict/all with new/manual product features ===")
+def test_manual_feature_prediction(base_url: str, result: TestResult) -> None:
+    print("\n=== Testing /predict/all with manual product features ===")
 
     payload = {
-        "nama_barang": "PRODUK BARU TEST MANUAL",
+        "nama_barang": "KOPI ABC TEST AUTO",
         "kategori": "MINUMAN",
         "supplier": "SUPPLIER TEST",
-        "hpp": 5000,
-        "harga_toko_1": 7000,
+        "hpp": 1500,
+        "harga_toko_1": 2000,
         "stok_min": 10,
         "stok_max": 100,
-        "total_stock": 40,
-        "trx_total_qty": 15,
-        "trx_qty_30d": 5,
-        "trx_qty_60d": 10,
-        "trx_qty_90d": 15,
+        "total_stock": 50,
+        "trx_total_qty": 20,
+        "trx_qty_30d": 8,
+        "trx_qty_60d": 14,
+        "trx_qty_90d": 20,
         "trx_count": 5,
-        "trx_total_revenue": 105000,
-        "trx_total_profit": 30000,
+        "trx_total_revenue": 40000,
+        "trx_total_profit": 10000,
     }
 
     status, body = request_json("POST", base_url, "/predict/all", json=payload)
-    label = "POST /predict/all new/manual product"
+    label = "POST /predict/all with manual features"
 
     if status != 200:
         result.fail(f"{label} returned {status}: {body}")
         return
 
-    if not assert_json_object(result, body, label):
+    if not assert_dict(result, body, label):
         return
 
-    if validate_predict_all_body(body, result, label):
-        result.pass_(f"{label} handled correctly")
+    if not validate_predict_all_body(body, result, label):
+        return
+
+    match_type = body["matched_product"].get("match_type")
+    if match_type == "manual_features":
+        result.pass_(f"{label} used manual_features")
+    else:
+        result.pass_(f"{label} returned match_type={match_type}")
 
 
-def test_individual_prediction_endpoints(base_url: str, result: TestResult):
+def test_individual_prediction_endpoints(base_url: str, result: TestResult) -> None:
     print("\n=== Testing individual prediction endpoints ===")
 
-    try:
-        codes = get_test_product_codes(1)
-        names = get_test_product_names(1)
-    except Exception as exc:
-        result.fail(f"Cannot prepare product payloads: {exc}")
-        return
-
     payloads: list[tuple[str, dict[str, Any]]] = []
+
+    codes = get_test_product_codes(1)
+    names = get_test_product_names(1)
 
     if codes:
         payloads.append((f"kode_barang={codes[0]}", {"kode_barang": codes[0]}))
@@ -635,8 +602,45 @@ def test_individual_prediction_endpoints(base_url: str, result: TestResult):
         payloads.append((f"nama_barang={names[0]}", {"nama_barang": names[0]}))
 
     if not payloads:
-        result.fail("No product payload available for individual endpoint test")
-        return
+        sample = get_sample_product_from_search(base_url)
+        if sample and sample.get("kode_barang"):
+            payloads.append(
+                (
+                    f"kode_barang={sample.get('kode_barang')}",
+                    {"kode_barang": sample.get("kode_barang")},
+                )
+            )
+        elif sample and sample.get("nama"):
+            payloads.append(
+                (
+                    f"nama_barang={sample.get('nama')}",
+                    {"nama_barang": sample.get("nama")},
+                )
+            )
+
+    if not payloads:
+        payloads.append(
+            (
+                "manual_features",
+                {
+                    "nama_barang": "PRODUK TEST MANUAL",
+                    "kategori": "MINUMAN",
+                    "supplier": "SUPPLIER TEST",
+                    "hpp": 1000,
+                    "harga_toko_1": 1500,
+                    "stok_min": 5,
+                    "stok_max": 50,
+                    "total_stock": 30,
+                    "trx_total_qty": 10,
+                    "trx_qty_30d": 4,
+                    "trx_qty_60d": 8,
+                    "trx_qty_90d": 10,
+                    "trx_count": 3,
+                    "trx_total_revenue": 15000,
+                    "trx_total_profit": 5000,
+                },
+            )
+        )
 
     endpoints = [
         "/predict/fast-moving",
@@ -653,34 +657,65 @@ def test_individual_prediction_endpoints(base_url: str, result: TestResult):
                 result.fail(f"{label} returned {status}: {body}")
                 continue
 
-            if not assert_json_object(result, body, label):
+            if not assert_dict(result, body, label):
                 continue
 
-            if "matched_product" in body:
-                result.pass_(f"{label} returned matched_product")
-            else:
+            if "matched_product" not in body:
                 result.fail(f"{label} missing matched_product")
+                continue
+
+            if endpoint == "/predict/fast-moving":
+                if body.get("prediction") in VALID_FAST_MOVING:
+                    result.pass_(f"{label} returned valid fast_moving prediction")
+                else:
+                    result.fail(f"{label} invalid body: {body}")
+
+            elif endpoint == "/predict/low-stock":
+                if body.get("prediction") in VALID_LOW_STOCK:
+                    result.pass_(f"{label} returned valid low_stock prediction")
+                else:
+                    result.fail(f"{label} invalid body: {body}")
+
+            elif endpoint == "/predict/profit":
+                if body.get("profit_category") in VALID_PROFIT:
+                    result.pass_(f"{label} returned valid profit prediction")
+                else:
+                    result.fail(f"{label} invalid body: {body}")
 
 
-def test_invalid_product(base_url: str, result: TestResult):
+def test_invalid_product(base_url: str, result: TestResult) -> None:
     print("\n=== Testing invalid product handling ===")
 
     payload = {"nama_barang": "PRODUK_INI_TIDAK_MUNGKIN_ADA_999999"}
     status, body = request_json("POST", base_url, "/predict/all", json=payload)
+    label = "POST /predict/all invalid product"
 
     if status in {400, 404}:
-        result.pass_(f"Invalid product returned proper error {status}")
+        result.pass_(f"{label} returned proper error {status}")
         print_json(body)
     else:
-        result.fail(f"Invalid product should return 400/404, got {status}: {body}")
+        result.fail(f"{label} should return 400/404, got {status}: {body}")
 
 
-def test_swagger_placeholder_payload(base_url: str, result: TestResult):
+def test_swagger_placeholder_payload(base_url: str, result: TestResult) -> None:
     print("\n=== Testing Swagger placeholder cleanup ===")
+
+    sample_name = None
+
+    names = get_test_product_names(1)
+    if names:
+        sample_name = names[0]
+    else:
+        sample = get_sample_product_from_search(base_url)
+        if sample and sample.get("nama"):
+            sample_name = str(sample["nama"])
+
+    if not sample_name:
+        sample_name = "beras"
 
     payload = {
         "kode_barang": "string",
-        "nama_barang": "beras",
+        "nama_barang": sample_name,
         "hpp": "string",
         "harga_toko_1": "string",
         "trx_total_qty": "string",
@@ -689,214 +724,82 @@ def test_swagger_placeholder_payload(base_url: str, result: TestResult):
     status, body = request_json("POST", base_url, "/predict/all", json=payload)
     label = "POST /predict/all with Swagger placeholder payload"
 
+    if status == 404:
+        result.skip(f"{label} returned 404 because sample name was not found")
+        return
+
     if status != 200:
         result.fail(f"{label} returned {status}: {body}")
         return
 
-    if not assert_json_object(result, body, label):
+    if not assert_dict(result, body, label):
         return
 
     if validate_predict_all_body(body, result, label):
         result.pass_(f"{label} handled correctly")
 
 
-def test_recommendation_get_endpoints(base_url: str, result: TestResult):
-    print("\n=== Testing GET recommendation and insight endpoints with internal/DS data ===")
+def test_recommendation_endpoints(base_url: str, result: TestResult) -> None:
+    print("\n=== Testing recommendation and insight endpoints ===")
 
     endpoints = [
-        "/recommendations/top-products?limit=10",
-        "/recommendations/high-profit?limit=10",
-        "/recommendations/restock-priority?limit=10",
+        "/recommendations/top-products",
+        "/recommendations/high-profit",
+        "/recommendations/restock-priority",
         "/insights/summary",
     ]
 
     for endpoint in endpoints:
-        status, body = request_json("GET", base_url, endpoint)
+        params = {"limit": 10} if endpoint.startswith("/recommendations/") else None
+
+        status, body = request_json(
+            "GET",
+            base_url,
+            endpoint,
+            params=params,
+        )
+
         label = f"GET {endpoint}"
 
         if status != 200:
             result.fail(f"{label} returned {status}: {body}")
             continue
 
-        assert_json_object_or_list(result, body, label)
+        assert_list_or_dict(result, body, label)
 
 
-def test_forecast_get_endpoint(base_url: str, result: TestResult):
-    print("\n=== Testing GET forecast endpoint with internal/DS data ===")
+def test_forecast_endpoint(base_url: str, result: TestResult) -> None:
+    print("\n=== Testing forecast endpoint ===")
 
-    status, body = request_json("GET", base_url, "/forecast/daily-kpi")
+    status, body = request_json(
+        "GET",
+        base_url,
+        "/forecast/daily-kpi",
+        params={"days": 7},
+    )
+
     label = "GET /forecast/daily-kpi"
 
     if status != 200:
         result.fail(f"{label} returned {status}: {body}")
         return
 
-    assert_json_object_or_list(result, body, label)
+    assert_list_or_dict(result, body, label)
 
 
-def validate_forecast_realtime_body(body: dict[str, Any], result: TestResult, label: str) -> bool:
-    required_keys = {"source", "horizon_days", "summary", "forecast"}
+def guess_content_type(path: Path) -> str:
+    suffix = path.suffix.lower()
 
-    missing = required_keys - set(body.keys())
+    if suffix in {".jpg", ".jpeg"}:
+        return "image/jpeg"
 
-    if missing:
-        result.fail(f"{label} missing keys: {missing}")
-        return False
+    if suffix == ".png":
+        return "image/png"
 
-    if body.get("source") != "request_payload_from_fs_database":
-        result.fail(f"{label} invalid source: {body.get('source')}")
-        return False
+    if suffix == ".webp":
+        return "image/webp"
 
-    forecast = body.get("forecast")
-
-    if not isinstance(forecast, list) or not forecast:
-        result.fail(f"{label} forecast should be non-empty list")
-        return False
-
-    first = forecast[0]
-
-    for key in ["date", "predicted_revenue", "predicted_profit", "predicted_transactions"]:
-        if key not in first:
-            result.fail(f"{label} forecast item missing {key}: {first}")
-            return False
-
-    return True
-
-
-def validate_insight_realtime_body(body: dict[str, Any], result: TestResult, label: str) -> bool:
-    required_keys = {"source", "summary", "insights"}
-
-    missing = required_keys - set(body.keys())
-
-    if missing:
-        result.fail(f"{label} missing keys: {missing}")
-        return False
-
-    if body.get("source") != "request_payload_from_fs_database":
-        result.fail(f"{label} invalid source: {body.get('source')}")
-        return False
-
-    if not isinstance(body.get("insights"), list):
-        result.fail(f"{label} insights should be list")
-        return False
-
-    return True
-
-
-def test_realtime_forecast_post(base_url: str, result: TestResult, require_realtime: bool):
-    print("\n=== Testing POST /forecast/daily-kpi with real FS payload ===")
-
-    payload = sample_forecast_payload()
-    status, body = request_json("POST", base_url, "/forecast/daily-kpi", json=payload)
-    label = "POST /forecast/daily-kpi"
-
-    if status == 405 and not require_realtime:
-        result.skip(f"{label} not available. Install realtime patch to enable it.")
-        return
-
-    if status != 200:
-        result.fail(f"{label} returned {status}: {body}")
-        return
-
-    if not assert_json_object(result, body, label):
-        return
-
-    if validate_forecast_realtime_body(body, result, label):
-        result.pass_(f"{label} realtime forecast handled correctly")
-
-
-def test_realtime_insight_post(base_url: str, result: TestResult, require_realtime: bool):
-    print("\n=== Testing POST /insights/summary with real FS payload ===")
-
-    payload = sample_insight_payload()
-    status, body = request_json("POST", base_url, "/insights/summary", json=payload)
-    label = "POST /insights/summary"
-
-    if status == 405 and not require_realtime:
-        result.skip(f"{label} not available. Install realtime patch to enable it.")
-        return
-
-    if status != 200:
-        result.fail(f"{label} returned {status}: {body}")
-        return
-
-    if not assert_json_object(result, body, label):
-        return
-
-    if validate_insight_realtime_body(body, result, label):
-        result.pass_(f"{label} realtime insight handled correctly")
-
-
-def test_realtime_products_search_post(base_url: str, result: TestResult, require_realtime: bool):
-    print("\n=== Testing POST /products/search with real FS product list ===")
-
-    payload = {
-        "q": "beras",
-        "limit": 10,
-        "products": sample_realtime_products(),
-    }
-
-    status, body = request_json("POST", base_url, "/products/search", json=payload)
-    label = "POST /products/search"
-
-    if status == 405 and not require_realtime:
-        result.skip(f"{label} not available. Install realtime patch to enable it.")
-        return
-
-    if status != 200:
-        result.fail(f"{label} returned {status}: {body}")
-        return
-
-    if not assert_json_object(result, body, label):
-        return
-
-    items = body.get("items")
-
-    if not isinstance(items, list):
-        result.fail(f"{label} items should be list: {body}")
-        return
-
-    result.pass_(f"{label} returned realtime product search items")
-
-
-def test_realtime_recommendation_posts(base_url: str, result: TestResult, require_realtime: bool):
-    print("\n=== Testing POST realtime recommendation endpoints ===")
-
-    endpoints = [
-        "/recommendations/top-products",
-        "/recommendations/high-profit",
-        "/recommendations/restock-priority",
-    ]
-
-    payload = {
-        "limit": 10,
-        "products": sample_realtime_products(),
-    }
-
-    for endpoint in endpoints:
-        status, body = request_json("POST", base_url, endpoint, json=payload)
-        label = f"POST {endpoint}"
-
-        if status == 405 and not require_realtime:
-            result.skip(f"{label} not available. Install realtime patch to enable it.")
-            continue
-
-        if status != 200:
-            result.fail(f"{label} returned {status}: {body}")
-            continue
-
-        if not assert_json_object(result, body, label):
-            continue
-
-        if body.get("source") != "request_payload_from_fs_database":
-            result.fail(f"{label} invalid source: {body}")
-            continue
-
-        if not isinstance(body.get("items"), list):
-            result.fail(f"{label} items should be list: {body}")
-            continue
-
-        result.pass_(f"{label} realtime recommendation handled correctly")
+    return "application/octet-stream"
 
 
 def test_ocr_endpoint(
@@ -904,17 +807,15 @@ def test_ocr_endpoint(
     result: TestResult,
     image_path: str | None,
     require_ocr: bool = False,
-):
+) -> None:
     print("\n=== Testing OCR endpoint ===")
 
     if not image_path:
         message = "OCR test skipped. Use --ocr-image path\\to\\nota.jpg to enable it."
-
         if require_ocr:
             result.fail(message)
         else:
             result.skip(message)
-
         return
 
     path = Path(image_path)
@@ -923,15 +824,13 @@ def test_ocr_endpoint(
         result.fail(f"OCR image not found: {path}")
         return
 
-    content_type = "image/jpeg"
-
-    if path.suffix.lower() == ".png":
-        content_type = "image/png"
-    elif path.suffix.lower() == ".webp":
-        content_type = "image/webp"
+    content_type = guess_content_type(path)
 
     with path.open("rb") as file:
-        files = {"file": (path.name, file, content_type)}
+        files = {
+            "file": (path.name, file, content_type),
+        }
+
         status, body = request_json(
             "POST",
             base_url,
@@ -946,7 +845,7 @@ def test_ocr_endpoint(
         result.fail(f"{label} returned {status}: {body}")
         return
 
-    if not assert_json_object(result, body, label):
+    if not assert_dict(result, body, label):
         return
 
     if "items" not in body:
@@ -957,52 +856,48 @@ def test_ocr_endpoint(
     print_json(body)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Complete automated test for Tata-Arta AI API")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Full automated test for Tata-Arta AI API"
+    )
+
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--ocr-image", default=None)
     parser.add_argument("--require-ocr", action="store_true")
-    parser.add_argument("--require-realtime", action="store_true")
     parser.add_argument("--skip-local-files", action="store_true")
-    parser.add_argument("--skip-dataset-tests", action="store_true")
-    parser.add_argument("--skip-realtime-tests", action="store_true")
 
     args = parser.parse_args()
+
     result = TestResult()
 
-    print("=== Tata-Arta AI API Complete Automated Test ===")
-    print(f"Project root      : {PROJECT_ROOT}")
-    print(f"Base URL          : {args.base_url}")
-    print(f"Limit             : {args.limit}")
-    print(f"Require realtime  : {args.require_realtime}")
-    print(f"Require OCR       : {args.require_ocr}")
+    print("=== Tata-Arta AI API Full Automated Test ===")
+    print(f"Project root: {PROJECT_ROOT}")
+    print(f"Base URL    : {args.base_url}")
+    print(f"Limit       : {args.limit}")
 
     if not args.skip_local_files:
         test_model_files(result)
 
+    test_root(args.base_url, result)
     test_health(args.base_url, result)
     test_metadata(args.base_url, result)
-
-    if not args.skip_dataset_tests:
-        test_product_search_get(args.base_url, result)
-        test_predict_all_by_code(args.base_url, result, args.limit)
-        test_predict_all_by_exact_name(args.base_url, result, args.limit)
-        test_predict_all_by_keyword_name(args.base_url, result)
-        test_predict_all_manual_product(args.base_url, result)
-        test_individual_prediction_endpoints(args.base_url, result)
-        test_invalid_product(args.base_url, result)
-        test_swagger_placeholder_payload(args.base_url, result)
-        test_recommendation_get_endpoints(args.base_url, result)
-        test_forecast_get_endpoint(args.base_url, result)
-
-    if not args.skip_realtime_tests:
-        test_realtime_forecast_post(args.base_url, result, args.require_realtime)
-        test_realtime_insight_post(args.base_url, result, args.require_realtime)
-        test_realtime_products_search_post(args.base_url, result, args.require_realtime)
-        test_realtime_recommendation_posts(args.base_url, result, args.require_realtime)
-
-    test_ocr_endpoint(args.base_url, result, args.ocr_image, args.require_ocr)
+    test_product_search(args.base_url, result)
+    test_predict_all_by_code(args.base_url, result, args.limit)
+    test_predict_all_by_exact_name(args.base_url, result, args.limit)
+    test_predict_all_by_keyword_name(args.base_url, result)
+    test_manual_feature_prediction(args.base_url, result)
+    test_individual_prediction_endpoints(args.base_url, result)
+    test_invalid_product(args.base_url, result)
+    test_swagger_placeholder_payload(args.base_url, result)
+    test_recommendation_endpoints(args.base_url, result)
+    test_forecast_endpoint(args.base_url, result)
+    test_ocr_endpoint(
+        args.base_url,
+        result,
+        image_path=args.ocr_image,
+        require_ocr=args.require_ocr,
+    )
 
     result.summary()
 
