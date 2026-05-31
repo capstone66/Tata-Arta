@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from typing import Any
 
-import numpy as np
 
 PLACEHOLDER_VALUES = {"", "string", "null", "none", "undefined", "nan", "-"}
 
@@ -19,9 +18,22 @@ def _is_placeholder(value: Any) -> bool:
     return False
 
 
+def _clean_text(value: Any, default: str = "") -> str:
+    if _is_placeholder(value):
+        return default
+    return str(value).strip()
+
+
+def _normalize_text(value: Any) -> str:
+    text = _clean_text(value).lower()
+    text = re.sub(r"[^a-z0-9\s]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _to_float(value: Any, default: float = 0.0) -> float:
     if _is_placeholder(value):
         return default
+
     try:
         if isinstance(value, str):
             text = (
@@ -32,6 +44,10 @@ def _to_float(value: Any, default: float = 0.0) -> float:
                 .replace(" ", "")
                 .strip()
             )
+
+            # Format Indonesia:
+            # 1.500.000,50 -> 1500000.50
+            # 1,5 -> 1.5
             if "," in text and "." in text:
                 text = text.replace(".", "").replace(",", ".")
             elif "," in text and "." not in text:
@@ -39,506 +55,667 @@ def _to_float(value: Any, default: float = 0.0) -> float:
             elif text.count(".") > 1:
                 text = text.replace(".", "")
 
-            value = float(text)
-        else:
-            value = float(value)
+            return float(text)
 
-        if math.isnan(value) or math.isinf(value):
-            return default
-        return value
+        return float(value)
     except Exception:
         return default
 
 
 def _to_int(value: Any, default: int = 0) -> int:
-    return int(round(_to_float(value, default)))
+    return int(round(_to_float(value, float(default))))
 
 
-def _normalize_text(value: Any) -> str:
-    if _is_placeholder(value):
-        return ""
-    text = str(value).lower().strip()
-    text = re.sub(r"[^a-z0-9\s]+", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+def _safe_number(value: float) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return 0.0
+    return float(value)
 
 
-def _parse_date(value: Any) -> datetime:
-    if _is_placeholder(value):
-        return datetime.now()
-    try:
-        return datetime.fromisoformat(str(value).strip()[:10])
-    except Exception:
-        return datetime.now()
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, tuple):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, float):
+        return _safe_number(value)
+    return value
 
 
-def _date_str(dt: datetime) -> str:
-    return dt.strftime("%Y-%m-%d")
+def _products_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    products = payload.get("products") or []
 
+    if not isinstance(products, list):
+        raise ValueError("Field 'products' harus berupa list.")
 
-def _safe_div(a: float, b: float, default: float = 0.0) -> float:
-    return default if b == 0 else a / b
+    cleaned: list[dict[str, Any]] = []
 
-
-def _trend_from_values(values: list[float]) -> str:
-    if len(values) < 3:
-        return "stable"
-
-    midpoint = max(1, len(values) // 2)
-    prev_avg = float(np.mean(values[:midpoint])) if values[:midpoint] else 0.0
-    recent_avg = float(np.mean(values[midpoint:])) if values[midpoint:] else 0.0
-
-    if prev_avg <= 0 and recent_avg > 0:
-        return "up"
-
-    change_pct = _safe_div(recent_avg - prev_avg, prev_avg, 0.0)
-
-    if change_pct >= 0.08:
-        return "up"
-    if change_pct <= -0.08:
-        return "down"
-    return "stable"
-
-
-def _linear_forecast(values: list[float], horizon_days: int) -> list[float]:
-    values = [_to_float(v) for v in values]
-
-    if not values:
-        return [0.0] * horizon_days
-    if len(values) == 1:
-        return [max(0.0, values[0])] * horizon_days
-
-    x = np.arange(len(values), dtype=float)
-    y = np.array(values, dtype=float)
-
-    try:
-        slope, intercept = np.polyfit(x, y, 1)
-    except Exception:
-        slope = 0.0
-        intercept = float(np.mean(y))
-
-    recent_avg = float(np.mean(values[-min(7, len(values)):]))
-    last_value = float(values[-1])
-
-    predictions = []
-
-    for step in range(1, horizon_days + 1):
-        linear_value = intercept + slope * (len(values) - 1 + step)
-        momentum_value = last_value + slope * step
-        predicted = (0.45 * linear_value) + (0.35 * momentum_value) + (0.20 * recent_avg)
-        predictions.append(max(0.0, float(predicted)))
-
-    return predictions
-
-
-def _clean_kpi_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    cleaned = []
-
-    for item in history or []:
+    for item in products:
         if not isinstance(item, dict):
             continue
 
-        dt = _parse_date(item.get("date"))
-        revenue = _to_float(item.get("revenue"))
-        expense = _to_float(item.get("expense"))
-        profit = revenue - expense if _is_placeholder(item.get("profit")) else _to_float(item.get("profit"))
-
-        cleaned.append(
-            {
-                "date": _date_str(dt),
-                "_date_obj": dt,
-                "revenue": revenue,
-                "expense": expense,
-                "profit": profit,
-                "transactions": _to_int(item.get("transactions")),
-            }
-        )
-
-    cleaned = sorted(cleaned, key=lambda x: x["_date_obj"])
-
-    for item in cleaned:
-        item.pop("_date_obj", None)
+        cleaned.append({k: v for k, v in item.items() if not _is_placeholder(v)})
 
     return cleaned
 
 
-def forecast_daily_kpi_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def _limit_from_payload(payload: dict[str, Any], default: int = 10) -> int:
+    limit = _to_int(payload.get("limit"), default)
+    return max(1, min(limit, 50))
+
+
+def _product_name(product: dict[str, Any]) -> str:
+    return (
+        _clean_text(product.get("nama_barang"))
+        or _clean_text(product.get("nama_produk"))
+        or _clean_text(product.get("nama"))
+    )
+
+
+def _selling_price(product: dict[str, Any]) -> float:
+    return (
+        _to_float(product.get("harga_toko_1"))
+        or _to_float(product.get("harga_jual"))
+        or _to_float(product.get("harga_toko_2"))
+        or _to_float(product.get("harga_toko_3"))
+    )
+
+
+def _stock_value(product: dict[str, Any]) -> float:
+    if not _is_placeholder(product.get("total_stock")):
+        return _to_float(product.get("total_stock"))
+
+    if not _is_placeholder(product.get("stock")):
+        return _to_float(product.get("stock"))
+
+    toko = _to_float(product.get("toko"))
+    gudang = _to_float(product.get("gudang"))
+
+    if toko or gudang:
+        return toko + gudang
+
+    return 0.0
+
+
+def _profit_percent(product: dict[str, Any]) -> float:
+    # 1. Pakai profit_percent eksplisit dari backend jika ada.
+    for key in ("estimated_profit_percent", "profit_percent"):
+        if not _is_placeholder(product.get(key)):
+            return max(0.0, _to_float(product.get(key)))
+
+    # 2. Hitung dari HPP dan harga jual.
+    hpp = _to_float(product.get("hpp"))
+    price = _selling_price(product)
+
+    if price > 0 and hpp >= 0:
+        return max(0.0, ((price - hpp) / price) * 100)
+
+    # 3. Hitung dari total profit dan revenue transaksi.
+    revenue = _to_float(product.get("trx_total_revenue"))
+    profit = _to_float(product.get("trx_total_profit"))
+
+    if revenue > 0:
+        return max(0.0, (profit / revenue) * 100)
+
+    return 0.0
+
+
+def _profit_category(percent: float) -> str:
+    if percent >= 20:
+        return "High Profit"
+    if percent >= 8:
+        return "Medium Profit"
+    return "Low Profit"
+
+
+def _sales_score(product: dict[str, Any]) -> float:
+    trx_total_qty = _to_float(product.get("trx_total_qty"))
+    trx_qty_30d = _to_float(product.get("trx_qty_30d"))
+    trx_qty_60d = _to_float(product.get("trx_qty_60d"))
+    trx_qty_90d = _to_float(product.get("trx_qty_90d"))
+    trx_count = _to_float(product.get("trx_count"))
+
+    return (
+        trx_qty_30d * 0.45
+        + (trx_qty_60d / 2) * 0.20
+        + (trx_qty_90d / 3) * 0.15
+        + trx_total_qty * 0.10
+        + trx_count * 0.10
+    )
+
+
+def _restock_score(product: dict[str, Any]) -> float:
+    total_stock = _stock_value(product)
+    stok_min = _to_float(product.get("stok_min"))
+    stok_max = _to_float(product.get("stok_max"))
+    trx_qty_30d = _to_float(product.get("trx_qty_30d"))
+    trx_qty_90d = _to_float(product.get("trx_qty_90d"))
+    trx_count = _to_float(product.get("trx_count"))
+
+    if stok_min > 0:
+        stock_pressure = max(0.0, (stok_min - total_stock) / stok_min)
+    else:
+        stock_pressure = 1.0 if total_stock <= 0 else 0.0
+
+    sales_velocity = (
+        trx_qty_30d * 0.7
+        + (trx_qty_90d / 3) * 0.2
+        + trx_count * 0.1
+    )
+
+    score = (stock_pressure * 100) + sales_velocity
+
+    if total_stock <= 0:
+        score += 50
+
+    if stok_max > 0 and total_stock > stok_max:
+        score -= 25
+
+    return max(0.0, score)
+
+
+def _compact_product(product: dict[str, Any]) -> dict[str, Any]:
+    total_stock = _stock_value(product)
+    profit_percent = _profit_percent(product)
+
+    return {
+        "kode_barang": _clean_text(product.get("kode_barang")) or None,
+        "nama": _product_name(product) or None,
+        "kategori": _clean_text(product.get("kategori")) or None,
+        "sub_kategori": _clean_text(product.get("sub_kategori")) or None,
+        "supplier": _clean_text(product.get("supplier")) or None,
+        "hpp": _to_float(product.get("hpp")),
+        "harga_toko_1": _selling_price(product),
+        "total_stock": total_stock,
+        "stok_min": _to_float(product.get("stok_min")),
+        "stok_max": _to_float(product.get("stok_max")),
+        "trx_total_qty": _to_float(product.get("trx_total_qty")),
+        "trx_qty_30d": _to_float(product.get("trx_qty_30d")),
+        "trx_qty_60d": _to_float(product.get("trx_qty_60d")),
+        "trx_qty_90d": _to_float(product.get("trx_qty_90d")),
+        "trx_count": _to_float(product.get("trx_count")),
+        "trx_total_revenue": _to_float(product.get("trx_total_revenue")),
+        "trx_total_profit": _to_float(product.get("trx_total_profit")),
+        "estimated_profit_percent": round(profit_percent, 2),
+        "profit_category": _profit_category(profit_percent),
+    }
+
+
+def search_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """
-    Forecast real-time dari data KPI database FS.
-    Endpoint ini dipakai oleh POST /forecast/daily-kpi.
+    Search produk realtime dari database FS.
+
+    Payload:
+    {
+      "q": "beras",
+      "limit": 10,
+      "products": [...]
+    }
     """
-    horizon_days = max(1, min(_to_int(payload.get("horizon_days"), 7), 30))
-    history = _clean_kpi_history(payload.get("history", []))
 
-    if not history:
-        raise ValueError("history wajib diisi minimal 1 data KPI harian dari database FS.")
+    query = _clean_text(payload.get("q"))
+    query_norm = _normalize_text(query)
+    limit = _limit_from_payload(payload)
+    products = _products_from_payload(payload)
 
-    revenue_values = [item["revenue"] for item in history]
-    expense_values = [item["expense"] for item in history]
-    profit_values = [item["profit"] for item in history]
-    transaction_values = [item["transactions"] for item in history]
+    if not query_norm:
+        return {
+            "source": "fs_payload",
+            "query": query,
+            "count": 0,
+            "items": [],
+        }
 
-    revenue_forecast = _linear_forecast(revenue_values, horizon_days)
-    expense_forecast = _linear_forecast(expense_values, horizon_days)
-    profit_forecast = _linear_forecast(profit_values, horizon_days)
-    transaction_forecast = _linear_forecast(transaction_values, horizon_days)
+    candidates: list[dict[str, Any]] = []
 
-    last_date = _parse_date(history[-1]["date"])
+    for product in products:
+        name = _product_name(product)
+        kode = _clean_text(product.get("kode_barang"))
 
-    forecast = []
-
-    for idx in range(horizon_days):
-        forecast_date = last_date + timedelta(days=idx + 1)
-        predicted_revenue = round(revenue_forecast[idx], 2)
-        predicted_expense = round(expense_forecast[idx], 2)
-        predicted_profit = round(profit_forecast[idx], 2)
-
-        if predicted_profit == 0 and predicted_revenue > 0:
-            predicted_profit = round(predicted_revenue - predicted_expense, 2)
-
-        forecast.append(
-            {
-                "date": _date_str(forecast_date),
-                "predicted_revenue": predicted_revenue,
-                "predicted_expense": predicted_expense,
-                "predicted_profit": predicted_profit,
-                "predicted_transactions": int(round(transaction_forecast[idx])),
-            }
+        haystack = (
+            f"{kode} {name} "
+            f"{_clean_text(product.get('kategori'))} "
+            f"{_clean_text(product.get('supplier'))}"
         )
 
-    notes = [
-        "Forecast dibuat dari history KPI yang dikirim backend FS.",
-        "Semakin panjang history transaksi, semakin stabil hasil forecast.",
-    ]
+        haystack_norm = _normalize_text(haystack)
 
-    if len(history) < 7:
-        notes.append("Data history kurang dari 7 hari, hasil forecast masih estimasi awal.")
+        if not haystack_norm:
+            continue
 
-    return {
-        "source": "request_payload_from_fs_database",
-        "horizon_days": horizon_days,
-        "last_actual_date": history[-1]["date"],
-        "summary": {
-            "history_days": len(history),
-            "avg_revenue": round(float(np.mean(revenue_values)), 2),
-            "avg_expense": round(float(np.mean(expense_values)), 2),
-            "avg_profit": round(float(np.mean(profit_values)), 2),
-            "avg_transactions": round(float(np.mean(transaction_values)), 2),
-            "last_revenue": round(revenue_values[-1], 2),
-            "last_profit": round(profit_values[-1], 2),
-            "last_transactions": int(transaction_values[-1]),
-            "revenue_trend": _trend_from_values(revenue_values),
-            "profit_trend": _trend_from_values(profit_values),
-            "transaction_trend": _trend_from_values(transaction_values),
-        },
-        "history": history,
-        "forecast": forecast,
-        "notes": notes,
-    }
+        if query_norm == _normalize_text(kode) or query_norm == _normalize_text(name):
+            score = 1.0
+        elif query_norm in haystack_norm:
+            score = 0.85
+        else:
+            score = SequenceMatcher(None, query_norm, haystack_norm).ratio()
+
+        if score >= 0.35:
+            item = _compact_product(product)
+            item["match_score"] = round(float(score), 4)
+            candidates.append(item)
+
+    candidates.sort(
+        key=lambda item: (
+            item.get("match_score", 0),
+            item.get("trx_total_qty", 0),
+            item.get("trx_count", 0),
+        ),
+        reverse=True,
+    )
+
+    items = candidates[:limit]
+
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "query": query,
+            "count": len(items),
+            "items": items,
+        }
+    )
 
 
-def _compact_product(item: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kode_barang": item.get("kode_barang"),
-        "nama_barang": item.get("nama_barang") or item.get("nama"),
-        "kategori": item.get("kategori"),
-        "sub_kategori": item.get("sub_kategori"),
-        "supplier": item.get("supplier"),
-        "total_stock": _to_float(item.get("total_stock", item.get("stock"))),
-        "stok_min": _to_float(item.get("stok_min")),
-        "trx_qty_30d": _to_float(item.get("trx_qty_30d")),
-        "trx_qty_90d": _to_float(item.get("trx_qty_90d")),
-        "trx_count": _to_int(item.get("trx_count")),
-        "profit_percent": _to_float(item.get("profit_percent", item.get("estimated_profit_percent"))),
-    }
+def top_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    products = _products_from_payload(payload)
+    limit = _limit_from_payload(payload)
+
+    items = []
+
+    for product in products:
+        item = _compact_product(product)
+        item["sales_score"] = round(_sales_score(product), 4)
+        item["reason"] = "Produk memiliki aktivitas penjualan tertinggi dari data real database FS."
+        items.append(item)
+
+    items.sort(
+        key=lambda item: (
+            item.get("sales_score", 0),
+            item.get("trx_total_qty", 0),
+            item.get("trx_count", 0),
+        ),
+        reverse=True,
+    )
+
+    items = items[:limit]
+
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "count": len(items),
+            "items": items,
+        }
+    )
+
+
+def high_profit_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    products = _products_from_payload(payload)
+    limit = _limit_from_payload(payload)
+
+    items = []
+
+    for product in products:
+        item = _compact_product(product)
+        item["reason"] = "Produk memiliki estimasi profit tertinggi dari data real database FS."
+        items.append(item)
+
+    items.sort(
+        key=lambda item: (
+            item.get("estimated_profit_percent", 0),
+            item.get("trx_total_profit", 0),
+            item.get("trx_total_revenue", 0),
+        ),
+        reverse=True,
+    )
+
+    items = items[:limit]
+
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "count": len(items),
+            "items": items,
+        }
+    )
+
+
+def restock_priority_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    products = _products_from_payload(payload)
+    limit = _limit_from_payload(payload)
+
+    items = []
+
+    for product in products:
+        item = _compact_product(product)
+        score = _restock_score(product)
+
+        item["restock_priority_score"] = round(score, 4)
+
+        if _stock_value(product) <= 0:
+            item["status"] = "Out of Stock"
+            item["reason"] = "Stok habis dan perlu segera restock."
+        elif _stock_value(product) <= _to_float(product.get("stok_min")):
+            item["status"] = "Restock Priority"
+            item["reason"] = "Stok berada di bawah atau sama dengan stok minimum."
+        else:
+            item["status"] = "Stock Safe"
+            item["reason"] = "Stok masih relatif aman."
+
+        items.append(item)
+
+    items.sort(
+        key=lambda item: (
+            item.get("restock_priority_score", 0),
+            item.get("trx_qty_30d", 0),
+            item.get("trx_count", 0),
+        ),
+        reverse=True,
+    )
+
+    items = items[:limit]
+
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "count": len(items),
+            "items": items,
+        }
+    )
+
+
+def _growth(current: float, previous: float) -> float | None:
+    if previous == 0:
+        return None
+
+    return ((current - previous) / abs(previous)) * 100
 
 
 def insights_summary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """
-    Insight real-time dari data hari ini, stok, dan produk database FS.
-    Endpoint ini dipakai oleh POST /insights/summary.
+    Insight realtime dari backend FS.
+
+    Payload:
+    {
+      "today": {
+        "revenue": 100000,
+        "expense": 70000,
+        "profit": 30000,
+        "transactions": 25
+      },
+      "previous_period": {
+        "avg_revenue": 80000,
+        "avg_profit": 20000,
+        "avg_transactions": 20
+      },
+      "stock": {
+        "total_products": 100,
+        "low_stock_products": 12,
+        "out_of_stock_products": 3
+      },
+      "products": [...]
+    }
     """
+
     today = payload.get("today") or {}
     previous = payload.get("previous_period") or {}
     stock = payload.get("stock") or {}
-    products = payload.get("products") or []
+    products = _products_from_payload(payload)
 
-    revenue_today = _to_float(today.get("revenue"))
-    expense_today = _to_float(today.get("expense"))
-    profit_today = revenue_today - expense_today if _is_placeholder(today.get("profit")) else _to_float(today.get("profit"))
-    transactions_today = _to_int(today.get("transactions"))
+    revenue = _to_float(today.get("revenue"))
+    expense = _to_float(today.get("expense"))
+    profit = _to_float(today.get("profit"), revenue - expense)
+    transactions = _to_int(today.get("transactions"))
 
-    revenue_avg = _to_float(previous.get("avg_revenue"))
-    profit_avg = _to_float(previous.get("avg_profit"))
-    transaction_avg = _to_float(previous.get("avg_transactions"))
+    avg_revenue = _to_float(previous.get("avg_revenue"))
+    avg_profit = _to_float(previous.get("avg_profit"))
+    avg_transactions = _to_float(previous.get("avg_transactions"))
 
     total_products = _to_int(stock.get("total_products"), len(products))
     low_stock_products = _to_int(stock.get("low_stock_products"))
     out_of_stock_products = _to_int(stock.get("out_of_stock_products"))
 
-    low_stock_from_products = []
-    out_of_stock_from_products = []
-    fast_moving_low_stock = []
-    high_profit_products = []
+    if products:
+        total_products = total_products or len(products)
 
-    for item in products:
-        if not isinstance(item, dict):
-            continue
+        low_stock_products = sum(
+            1
+            for product in products
+            if _stock_value(product) <= _to_float(product.get("stok_min"))
+            and _stock_value(product) > 0
+        )
 
-        total_stock = _to_float(item.get("total_stock", item.get("stock")))
-        stok_min = _to_float(item.get("stok_min"))
-        trx_qty_30d = _to_float(item.get("trx_qty_30d"))
-        profit_percent = _to_float(item.get("profit_percent", item.get("estimated_profit_percent")))
+        out_of_stock_products = sum(
+            1 for product in products if _stock_value(product) <= 0
+        )
 
-        if stok_min > 0 and total_stock <= stok_min:
-            low_stock_from_products.append(item)
+    fast_moving_products = sum(
+        1 for product in products if _sales_score(product) >= 10
+    )
 
-        if total_stock <= 0:
-            out_of_stock_from_products.append(item)
+    high_profit_products_count = sum(
+        1 for product in products if _profit_percent(product) >= 20
+    )
 
-        if stok_min > 0 and total_stock <= stok_min and trx_qty_30d >= 10:
-            fast_moving_low_stock.append(item)
+    restock_priority_products = sum(
+        1 for product in products if _restock_score(product) >= 50
+    )
 
-        if profit_percent >= 20:
-            high_profit_products.append(item)
+    revenue_growth = _growth(revenue, avg_revenue)
+    profit_growth = _growth(profit, avg_profit)
+    transaction_growth = _growth(float(transactions), avg_transactions)
 
-    if low_stock_products == 0 and low_stock_from_products:
-        low_stock_products = len(low_stock_from_products)
+    insights: list[str] = []
 
-    if out_of_stock_products == 0 and out_of_stock_from_products:
-        out_of_stock_products = len(out_of_stock_from_products)
-
-    insights = []
-
-    if revenue_avg > 0:
-        change = _safe_div(revenue_today - revenue_avg, revenue_avg, 0) * 100
-        if change >= 10:
-            insights.append(f"Pemasukan hari ini naik {change:.1f}% dibanding rata-rata periode sebelumnya.")
-        elif change <= -10:
-            insights.append(f"Pemasukan hari ini turun {abs(change):.1f}% dibanding rata-rata periode sebelumnya.")
+    if revenue_growth is not None:
+        if revenue_growth >= 10:
+            insights.append(
+                f"Revenue hari ini naik {revenue_growth:.1f}% dibanding rata-rata periode sebelumnya."
+            )
+        elif revenue_growth <= -10:
+            insights.append(
+                f"Revenue hari ini turun {abs(revenue_growth):.1f}% dibanding rata-rata periode sebelumnya."
+            )
         else:
-            insights.append("Pemasukan hari ini relatif stabil dibanding rata-rata periode sebelumnya.")
-    else:
-        insights.append("Pemasukan hari ini berhasil diringkas dari data transaksi terbaru.")
+            insights.append("Revenue hari ini relatif stabil dibanding periode sebelumnya.")
 
-    if profit_avg > 0:
-        change = _safe_div(profit_today - profit_avg, profit_avg, 0) * 100
-        if change >= 10:
-            insights.append(f"Profit hari ini naik {change:.1f}% dibanding rata-rata periode sebelumnya.")
-        elif change <= -10:
-            insights.append(f"Profit hari ini turun {abs(change):.1f}% dibanding rata-rata periode sebelumnya.")
-
-    if transaction_avg > 0:
-        change = _safe_div(transactions_today - transaction_avg, transaction_avg, 0) * 100
-        if change >= 10:
-            insights.append(f"Jumlah transaksi hari ini naik {change:.1f}% dibanding rata-rata.")
-        elif change <= -10:
-            insights.append(f"Jumlah transaksi hari ini turun {abs(change):.1f}% dibanding rata-rata.")
-
-    if low_stock_products > 0:
-        insights.append(f"Ada {low_stock_products} produk dengan stok rendah yang perlu dicek.")
+    if profit_growth is not None:
+        if profit_growth >= 10:
+            insights.append(
+                f"Profit hari ini naik {profit_growth:.1f}% dibanding rata-rata periode sebelumnya."
+            )
+        elif profit_growth <= -10:
+            insights.append(
+                f"Profit hari ini turun {abs(profit_growth):.1f}% dibanding rata-rata periode sebelumnya."
+            )
 
     if out_of_stock_products > 0:
-        insights.append(f"Ada {out_of_stock_products} produk kosong dan perlu segera ditindaklanjuti.")
+        insights.append(f"Ada {out_of_stock_products} produk habis stok.")
 
-    if fast_moving_low_stock:
-        insights.append(f"Ada {len(fast_moving_low_stock)} produk laku cepat dengan stok rendah. Prioritaskan restock.")
+    if low_stock_products > 0:
+        insights.append(f"Ada {low_stock_products} produk stok rendah.")
 
-    if high_profit_products:
-        insights.append(f"Ada {len(high_profit_products)} produk profit tinggi yang dapat diprioritaskan untuk promosi.")
+    if restock_priority_products > 0:
+        insights.append(
+            f"Ada {restock_priority_products} produk yang perlu diprioritaskan untuk restock."
+        )
+
+    if fast_moving_products > 0:
+        insights.append(f"Ada {fast_moving_products} produk dengan penjualan cepat.")
+
+    if high_profit_products_count > 0:
+        insights.append(
+            f"Ada {high_profit_products_count} produk dengan estimasi profit tinggi."
+        )
 
     if not insights:
-        insights.append("Belum ada insight kritis dari data terbaru.")
+        insights.append("Belum ada insight khusus. Data operasional terlihat stabil.")
 
-    return {
-        "source": "request_payload_from_fs_database",
-        "summary": {
-            "date": today.get("date"),
-            "revenue_today": round(revenue_today, 2),
-            "expense_today": round(expense_today, 2),
-            "profit_today": round(profit_today, 2),
-            "transactions_today": transactions_today,
-            "total_products": total_products,
-            "low_stock_products": low_stock_products,
-            "out_of_stock_products": out_of_stock_products,
-            "fast_moving_low_stock_products": len(fast_moving_low_stock),
-            "high_profit_products": len(high_profit_products),
-        },
-        "insights": insights,
-        "priority_products": {
-            "low_stock": [_compact_product(item) for item in low_stock_from_products[:10]],
-            "out_of_stock": [_compact_product(item) for item in out_of_stock_from_products[:10]],
-            "fast_moving_low_stock": [_compact_product(item) for item in fast_moving_low_stock[:10]],
-            "high_profit": [_compact_product(item) for item in high_profit_products[:10]],
-        },
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "summary": {
+                "date": today.get("date"),
+                "revenue": revenue,
+                "expense": expense,
+                "profit": profit,
+                "transactions": transactions,
+                "revenue_growth_percent": None
+                if revenue_growth is None
+                else round(revenue_growth, 2),
+                "profit_growth_percent": None
+                if profit_growth is None
+                else round(profit_growth, 2),
+                "transaction_growth_percent": None
+                if transaction_growth is None
+                else round(transaction_growth, 2),
+                "total_products": total_products,
+                "low_stock_products": low_stock_products,
+                "out_of_stock_products": out_of_stock_products,
+                "fast_moving_products": fast_moving_products,
+                "restock_priority_products": restock_priority_products,
+                "high_profit_products": high_profit_products_count,
+            },
+            "insights": insights,
+        }
+    )
+
+
+def _parse_date(value: Any) -> datetime | None:
+    text = _clean_text(value)
+
+    if not text:
+        return None
+
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt)
+        except Exception:
+            pass
+
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
+def forecast_daily_kpi_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Forecast KPI realtime dari history database FS.
+
+    Payload:
+    {
+      "horizon_days": 7,
+      "history": [
+        {
+          "date": "2026-05-01",
+          "revenue": 100000,
+          "expense": 70000,
+          "profit": 30000,
+          "transactions": 20
+        }
+      ]
     }
+    """
 
+    horizon_days = max(1, min(_to_int(payload.get("horizon_days"), 7), 30))
+    raw_history = payload.get("history") or []
 
-def search_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    query = str(payload.get("q") or payload.get("query") or "").strip()
-    limit = max(1, min(_to_int(payload.get("limit"), 10), 50))
-    products = payload.get("products") or []
-    query_norm = _normalize_text(query)
+    if not isinstance(raw_history, list):
+        raise ValueError("Field 'history' harus berupa list.")
 
-    if not query_norm:
-        return {"source": "request_payload_from_fs_database", "query": query, "count": 0, "items": []}
+    history: list[dict[str, Any]] = []
 
-    scored = []
-
-    for item in products:
+    for item in raw_history:
         if not isinstance(item, dict):
             continue
 
-        name = str(item.get("nama_barang") or item.get("nama") or item.get("product_name") or "")
-        name_norm = _normalize_text(name)
+        date = _parse_date(item.get("date"))
 
-        if not name_norm:
+        if date is None:
             continue
 
-        if name_norm == query_norm:
-            score, match_type = 1.0, "exact"
-        elif query_norm in name_norm:
-            score, match_type = SequenceMatcher(None, query_norm, name_norm).ratio(), "contains"
-        else:
-            score, match_type = SequenceMatcher(None, query_norm, name_norm).ratio(), "fuzzy"
+        revenue = _to_float(item.get("revenue"))
+        expense = _to_float(item.get("expense"))
+        profit = _to_float(item.get("profit"), revenue - expense)
+        transactions = _to_int(item.get("transactions"))
 
-        if score >= 0.40:
-            scored.append((score, match_type, item))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-
-    items = []
-
-    for score, match_type, item in scored[:limit]:
-        compact = _compact_product(item)
-        compact.update(
+        history.append(
             {
-                "match_type": match_type,
-                "match_score": round(float(score), 4),
-                "supplier": item.get("supplier"),
-                "hpp": _to_float(item.get("hpp")),
-                "harga_toko_1": _to_float(item.get("harga_toko_1")),
+                "date": date,
+                "revenue": revenue,
+                "expense": expense,
+                "profit": profit,
+                "transactions": transactions,
             }
         )
-        items.append(compact)
 
-    return {"source": "request_payload_from_fs_database", "query": query, "count": len(items), "items": items}
+    history.sort(key=lambda row: row["date"])
 
+    if len(history) < 3:
+        raise ValueError("Minimal butuh 3 data history KPI harian untuk forecast realtime.")
 
-def top_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    limit = max(1, min(_to_int(payload.get("limit"), 10), 50))
-    products = payload.get("products") or []
-    scored = []
+    recent = history[-7:] if len(history) >= 7 else history
+    previous = history[-14:-7] if len(history) >= 14 else history[:-7]
 
-    for item in products:
-        if not isinstance(item, dict):
-            continue
+    def avg(rows: list[dict[str, Any]], key: str) -> float:
+        if not rows:
+            return 0.0
+        return sum(_to_float(row.get(key)) for row in rows) / len(rows)
 
-        trx_total_qty = _to_float(item.get("trx_total_qty"))
-        trx_count = _to_float(item.get("trx_count"))
-        revenue = _to_float(item.get("trx_total_revenue"))
-        score = (trx_total_qty * 0.6) + (trx_count * 0.3) + (_safe_div(revenue, 1000000) * 0.1)
-        scored.append((score, item))
+    avg_revenue = avg(recent, "revenue")
+    avg_expense = avg(recent, "expense")
+    avg_profit = avg(recent, "profit")
+    avg_transactions = avg(recent, "transactions")
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    # Trend ringan dari recent vs previous. Dibatasi agar forecast tidak liar.
+    trend_factor = 0.0
 
-    items = []
+    if previous:
+        prev_revenue = avg(previous, "revenue")
 
-    for score, item in scored[:limit]:
-        compact = _compact_product(item)
-        compact.update(
+        if prev_revenue > 0:
+            trend_factor = max(
+                -0.1,
+                min(0.1, (avg_revenue - prev_revenue) / prev_revenue),
+            )
+
+    last_date = history[-1]["date"]
+    forecast: list[dict[str, Any]] = []
+
+    for day in range(1, horizon_days + 1):
+        factor = 1 + (trend_factor * day)
+        target_date = last_date + timedelta(days=day)
+
+        forecast.append(
             {
-                "score": round(score, 4),
-                "trx_total_qty": _to_float(item.get("trx_total_qty")),
-                "trx_count": _to_int(item.get("trx_count")),
-                "trx_total_revenue": _to_float(item.get("trx_total_revenue")),
-                "reason": "Produk memiliki aktivitas penjualan tinggi dari database FS.",
+                "date": target_date.strftime("%Y-%m-%d"),
+                "predicted_revenue": round(max(0.0, avg_revenue * factor), 2),
+                "predicted_expense": round(max(0.0, avg_expense * factor), 2),
+                "predicted_profit": round(max(0.0, avg_profit * factor), 2),
+                "predicted_transactions": int(
+                    round(max(0.0, avg_transactions * factor))
+                ),
             }
         )
-        items.append(compact)
 
-    return {"source": "request_payload_from_fs_database", "count": len(items), "items": items}
-
-
-def high_profit_products_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    limit = max(1, min(_to_int(payload.get("limit"), 10), 50))
-    products = payload.get("products") or []
-    scored = []
-
-    for item in products:
-        if not isinstance(item, dict):
-            continue
-
-        hpp = _to_float(item.get("hpp"))
-        price = _to_float(item.get("harga_toko_1") or item.get("harga_jual"))
-        profit_percent = _to_float(item.get("profit_percent") or item.get("estimated_profit_percent"))
-
-        if profit_percent <= 0 and price > 0:
-            profit_percent = _safe_div(price - hpp, price, 0) * 100
-
-        trx_qty_30d = _to_float(item.get("trx_qty_30d"))
-        score = profit_percent + min(trx_qty_30d, 100) * 0.05
-        scored.append((score, profit_percent, item))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-
-    items = []
-
-    for score, profit_percent, item in scored[:limit]:
-        compact = _compact_product(item)
-        category = "High Profit" if profit_percent >= 20 else "Medium Profit" if profit_percent >= 8 else "Low Profit"
-        compact.update(
-            {
-                "score": round(score, 4),
-                "estimated_profit_percent": round(profit_percent, 2),
-                "profit_category": category,
-                "reason": "Produk memiliki potensi profit tinggi berdasarkan data FS.",
-            }
-        )
-        items.append(compact)
-
-    return {"source": "request_payload_from_fs_database", "count": len(items), "items": items}
-
-
-def restock_priority_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    limit = max(1, min(_to_int(payload.get("limit"), 10), 50))
-    products = payload.get("products") or []
-    scored = []
-
-    for item in products:
-        if not isinstance(item, dict):
-            continue
-
-        total_stock = _to_float(item.get("total_stock", item.get("stock")))
-        stok_min = _to_float(item.get("stok_min"))
-        trx_qty_30d = _to_float(item.get("trx_qty_30d"))
-        trx_qty_90d = _to_float(item.get("trx_qty_90d"))
-        trx_count = _to_float(item.get("trx_count"))
-
-        stock_pressure = max(0.0, _safe_div(stok_min - total_stock, stok_min, 0)) if stok_min > 0 else (1.0 if total_stock <= 0 else 0.0)
-        sales_velocity = (trx_qty_30d * 0.7) + (_safe_div(trx_qty_90d, 3, 0) * 0.2) + (trx_count * 0.1)
-        score = (stock_pressure * 100) + sales_velocity
-
-        if total_stock <= 0:
-            score += 50
-
-        scored.append((score, item))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-
-    items = []
-
-    for score, item in scored[:limit]:
-        compact = _compact_product(item)
-        compact.update(
-            {
-                "restock_priority_score": round(float(score), 4),
-                "trx_total_qty": _to_float(item.get("trx_total_qty")),
-                "trx_qty_30d": _to_float(item.get("trx_qty_30d")),
-                "trx_count": _to_int(item.get("trx_count")),
-                "reason": "Produk diprioritaskan berdasarkan stok rendah dan transaksi database FS.",
-            }
-        )
-        items.append(compact)
-
-    return {"source": "request_payload_from_fs_database", "count": len(items), "items": items}
+    return _json_safe(
+        {
+            "source": "fs_payload",
+            "method": "trailing_average_with_light_trend",
+            "horizon_days": horizon_days,
+            "history_days": len(history),
+            "history_summary": {
+                "last_date": last_date.strftime("%Y-%m-%d"),
+                "avg_revenue_recent": round(avg_revenue, 2),
+                "avg_expense_recent": round(avg_expense, 2),
+                "avg_profit_recent": round(avg_profit, 2),
+                "avg_transactions_recent": round(avg_transactions, 2),
+                "trend_factor": round(trend_factor, 4),
+            },
+            "forecast": forecast,
+        }
+    )
