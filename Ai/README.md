@@ -1,8 +1,17 @@
 # Tata-Arta AI Service
 
-AI service untuk aplikasi **Tata-Arta**. Service ini menggunakan **FastAPI**, **TensorFlow/Keras**, dan **Gemini OCR** untuk membantu proses analisis produk, prediksi stok, rekomendasi bisnis, forecast KPI, dan OCR nota/faktur.
+AI service untuk aplikasi **Tata-Arta**.
 
-AI service ini dibuat sebagai service terpisah dari Backend Fullstack.
+Service ini berjalan terpisah dari Backend Fullstack dan digunakan untuk analisis produk, prediksi stok, rekomendasi bisnis, forecast KPI, dan OCR nota/faktur.
+
+AI service ini menggunakan:
+
+* **FastAPI** untuk REST API.
+* **TensorFlow/Keras** untuk model prediksi.
+* **Scikit-learn** dan **Joblib** untuk preprocessing.
+* **Gemini API** untuk OCR nota/faktur.
+* **Docker** untuk deployment.
+* **Render** sebagai salah satu opsi hosting production.
 
 ---
 
@@ -28,34 +37,30 @@ AI service digunakan untuk:
 Status terakhir:
 
 ```text
-AI API utama             : PASSED
-Realtime FS endpoint     : PASSED
-Model fast moving        : OK
-Model low stock/restock  : OK
-Model profit             : OK
-OCR endpoint             : Available
+AI API utama          : PASSED
+Realtime FS endpoint  : PASSED
+Model fast moving     : OK
+Model low stock       : OK
+Model profit          : OK
+OCR endpoint          : Available
+Docker build          : Tested
+Docker run            : Tested
 ```
 
-Hasil test utama:
+Hasil test utama yang diharapkan:
 
 ```text
-Passed : 130
+Passed : 130+
 Failed : 0
-Skipped: 1
+Skipped: 0 atau 1
 Status : PASSED
-```
-
-Hasil test realtime:
-
-```text
-PASSED: all realtime endpoint tests
 ```
 
 Catatan:
 
 ```text
-Skipped: 1 pada test utama biasanya karena OCR tidak diberi file gambar nota.
-Itu bukan error.
+Skipped: 1 biasanya karena OCR tidak diberi file gambar nota.
+Jika ingin test benar-benar lengkap tanpa skip, jalankan test dengan --ocr-image dan --require-ocr.
 ```
 
 ---
@@ -70,13 +75,13 @@ Arsitektur production yang benar:
 
 ```text
 Frontend
-↓
+   ↓
 Backend Fullstack
-↓
+   ↓
 AI Service
-↓
+   ↓
 Backend Fullstack
-↓
+   ↓
 Frontend
 ```
 
@@ -85,12 +90,19 @@ Frontend sebaiknya **tidak langsung memanggil AI service** pada production.
 Alasannya:
 
 1. Backend bisa menyembunyikan URL AI service.
-2. Backend bisa menjaga API key dan konfigurasi rahasia.
+2. Backend bisa menjaga konfigurasi rahasia.
 3. Backend bisa mengecek login user.
-4. Backend bisa mengecek role Owner/Karyawan.
-5. Backend bisa mengambil data real dari database.
+4. Backend bisa mengambil data real dari database.
+5. Backend bisa menghitung fitur produk sebelum dikirim ke AI.
 6. Backend bisa memfilter response AI sebelum dikirim ke frontend.
-7. Backend bisa mencegah data sensitif seperti HPP/profit/margin bocor ke Karyawan.
+7. Backend bisa menangani timeout/error dari AI.
+
+Catatan sementara:
+
+```text
+Multi-role Owner/Karyawan belum menjadi prioritas implementasi saat ini.
+Tetapi README tetap menyiapkan catatan role untuk pengembangan berikutnya.
+```
 
 ---
 
@@ -161,7 +173,7 @@ Mode ini cocok untuk:
 6. Data dashboard real dari database FS.
 7. Integrasi final dengan Backend Fullstack.
 
-Untuk production, Backend Fullstack wajib memakai mode realtime ini.
+Untuk production, Backend Fullstack sebaiknya memakai mode realtime ini.
 
 Jika response memiliki:
 
@@ -216,6 +228,7 @@ Ai/
 ├── tests/
 │   ├── auto_test_api.py
 │   └── auto_test_realtime_api.py
+├── .dockerignore
 ├── .env.example
 ├── Dockerfile
 ├── Makefile
@@ -227,26 +240,30 @@ Ai/
 └── train_all.py
 ```
 
-Penjelasan folder:
+Penjelasan folder/file:
 
-| Folder/File        | Fungsi                                                                    |
-| ------------------ | ------------------------------------------------------------------------- |
-| `api/`             | Endpoint FastAPI                                                          |
-| `models/`          | File model, preprocessor, dan summary training                            |
-| `ocr/`             | OCR nota/faktur dengan Gemini                                             |
-| `src/`             | Core AI: data loader, feature engineering, inference, training, analytics |
-| `tests/`           | Script testing otomatis                                                   |
-| `train_all.py`     | Training semua model                                                      |
-| `requirements.txt` | Dependency Python                                                         |
-| `Dockerfile`       | Build container untuk deploy                                              |
-| `render.yaml`      | Konfigurasi deploy Render                                                 |
-| `.env.example`     | Contoh environment variable                                               |
+| Folder/File          | Fungsi                                                                    |
+| -------------------- | ------------------------------------------------------------------------- |
+| `api/`               | Endpoint FastAPI                                                          |
+| `models/`            | File model, preprocessor, dan summary training                            |
+| `ocr/`               | OCR nota/faktur dengan Gemini                                             |
+| `src/`               | Core AI: data loader, feature engineering, inference, training, analytics |
+| `tests/`             | Script testing otomatis                                                   |
+| `train_all.py`       | Training semua model                                                      |
+| `requirements.txt`   | Dependency Python                                                         |
+| `Dockerfile`         | Build container untuk deploy                                              |
+| `.dockerignore`      | Menghindari file tidak perlu masuk Docker image                           |
+| `render.yaml`        | Konfigurasi deploy Render                                                 |
+| `docker-compose.yml` | Opsi menjalankan service dengan Docker Compose                            |
+| `.env.example`       | Contoh environment variable                                               |
 
 ---
 
 ## 6. Model AI
 
 AI service memiliki 3 model utama.
+
+---
 
 ### A. Fast Moving Model
 
@@ -263,7 +280,12 @@ Contoh output:
 ```json
 {
   "prediction": "Fast Moving",
-  "confidence": 0.93
+  "confidence": 0.93,
+  "probabilities": {
+    "Slow Moving": 0.01,
+    "Normal": 0.06,
+    "Fast Moving": 0.93
+  }
 }
 ```
 
@@ -283,6 +305,7 @@ Contoh output:
 ```json
 {
   "prediction": "Restock Priority",
+  "confidence": 0.88,
   "restock_priority_score": 0.88,
   "message": "Produk perlu diprioritaskan untuk restock."
 }
@@ -313,8 +336,8 @@ Contoh output:
 Catatan:
 
 ```text
-Hasil profit hanya boleh ditampilkan untuk Owner.
-Karyawan tidak boleh melihat profit, HPP, margin, atau estimasi profit.
+Untuk sementara multi-role belum diprioritaskan.
+Namun jika multi-role diterapkan nanti, hasil profit, HPP, margin, dan estimasi profit sebaiknya hanya ditampilkan untuk Owner.
 ```
 
 ---
@@ -366,7 +389,13 @@ Local development:
 http://localhost:8000
 ```
 
-Swagger/OpenAPI:
+Docker local test:
+
+```text
+http://localhost:8001
+```
+
+Swagger/OpenAPI lokal:
 
 ```text
 http://localhost:8000/docs
@@ -375,24 +404,79 @@ http://localhost:8000/docs
 Production:
 
 ```text
-https://URL-DEPLOY-AI-SERVICE
+https://URL-DEPLOY-AI-SERVICE.onrender.com
 ```
 
 Di Backend Fullstack, simpan URL AI pada `.env`:
 
 ```env
-AI_API_BASE_URL=http://localhost:8000
+AI_BASE_URL=http://localhost:8000
+```
+
+Jika Backend Fullstack ingin memakai AI Docker local test:
+
+```env
+AI_BASE_URL=http://localhost:8001
 ```
 
 Untuk production:
 
 ```env
-AI_API_BASE_URL=https://URL-DEPLOY-AI-SERVICE
+AI_BASE_URL=https://URL-DEPLOY-AI-SERVICE.onrender.com
+```
+
+Catatan penting:
+
+```text
+Gunakan AI_BASE_URL.
+Jangan gunakan AI_API_BASE_URL jika kode Backend Fullstack membaca AI_BASE_URL.
 ```
 
 ---
 
-## 9. Setup Local Development
+## 9. Environment Variables
+
+Contoh isi `.env` lokal:
+
+```env
+APP_ENV=development
+TF_CPP_MIN_LOG_LEVEL=2
+CORS_ALLOW_ORIGINS=*
+
+GEMINI_API_KEY=ISI_API_KEY_GEMINI
+GEMINI_OCR_MODEL=gemini-3.5-flash
+
+TATA_ARTA_DATA_DIR=
+
+PRODUCTS_FEATURED_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/products_featured.csv
+PRODUCTS_CLEAN_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/products_clean.csv
+TRANSACTIONS_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/transactions.csv
+DAILY_KPI_URL=https://raw.githubusercontent.com/capstone66/Tata-Arta/main/data-science/data/processed/daily_kpi.csv
+
+RANDOM_STATE=42
+```
+
+Environment production di Render:
+
+```env
+APP_ENV=production
+TF_CPP_MIN_LOG_LEVEL=2
+CORS_ALLOW_ORIGINS=*
+GEMINI_API_KEY=ISI_API_KEY_GEMINI
+GEMINI_OCR_MODEL=gemini-3.5-flash
+```
+
+Catatan:
+
+```text
+Jangan commit file .env asli ke GitHub.
+Gunakan .env.example sebagai template.
+GEMINI_API_KEY hanya boleh disimpan di local .env atau Render Environment Variables.
+```
+
+---
+
+## 10. Setup Local Development
 
 Masuk ke folder AI:
 
@@ -424,31 +508,23 @@ Install dependency:
 pip install -r requirements.txt
 ```
 
-Copy file environment:
+Cek dependency:
+
+```powershell
+pip check
+```
+
+Jika belum ada `.env`, copy dari template:
 
 ```powershell
 copy .env.example .env
 ```
 
-Isi `.env`:
-
-```env
-GEMINI_API_KEY=ISI_API_KEY_GEMINI
-GEMINI_OCR_MODEL=gemini-3.5-flash
-APP_ENV=development
-TF_CPP_MIN_LOG_LEVEL=2
-```
-
-Catatan:
-
-```text
-Jangan commit file .env asli ke GitHub.
-Gunakan .env.example sebagai template.
-```
+Isi `.env` sesuai kebutuhan.
 
 ---
 
-## 10. Menjalankan API
+## 11. Menjalankan API Lokal
 
 Jalankan dari folder `Ai`:
 
@@ -471,12 +547,18 @@ http://localhost:8000/docs
 
 ---
 
-## 11. Health Check
+## 12. Health Check
 
 Endpoint:
 
 ```http
 GET /health
+```
+
+Command:
+
+```powershell
+curl.exe http://localhost:8000/health
 ```
 
 Expected response:
@@ -497,20 +579,26 @@ Keterangan:
 
 | Field               | Arti                                                  |
 | ------------------- | ----------------------------------------------------- |
+| `status: ok`        | Service berjalan                                      |
 | `fast_moving: true` | Model fast moving tersedia                            |
 | `low_stock: true`   | Model low stock/restock tersedia                      |
 | `profit: true`      | Model profit tersedia                                 |
 | `realtime: true`    | Logic realtime dari `src/realtime_analytics.py` aktif |
 
-Jika `realtime` bernilai `false`, pastikan file berikut ada dan tidak error:
+Jika salah satu model bernilai `false`, pastikan file berikut ada:
 
 ```text
-Ai/src/realtime_analytics.py
+Ai/models/fast_moving_model.keras
+Ai/models/fast_moving_preprocessor.joblib
+Ai/models/low_stock_model.keras
+Ai/models/low_stock_preprocessor.joblib
+Ai/models/profit_model.keras
+Ai/models/profit_preprocessor.joblib
 ```
 
 ---
 
-## 12. Prediksi Produk Lama
+## 13. Prediksi Produk Lama
 
 Produk lama adalah produk yang sudah ada di dataset AI.
 
@@ -531,6 +619,20 @@ Request:
 }
 ```
 
+PowerShell test:
+
+```powershell
+$body = @{
+  kode_barang = "R1284"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8000/predict/all" `
+  -Method POST `
+  -Body $body `
+  -ContentType "application/json"
+```
+
 Contoh response:
 
 ```json
@@ -548,19 +650,13 @@ Contoh response:
   "fast_moving": {
     "class_id": 2,
     "prediction": "Fast Moving",
-    "confidence": 0.93,
-    "probabilities": {
-      "Slow Moving": 0.01,
-      "Normal": 0.06,
-      "Fast Moving": 0.93
-    }
+    "confidence": 0.93
   },
   "low_stock": {
     "class_id": 1,
     "prediction": "Restock Priority",
     "confidence": 0.88,
-    "restock_priority_score": 0.88,
-    "message": "Produk perlu diprioritaskan untuk restock."
+    "restock_priority_score": 0.88
   },
   "profit": {
     "estimated_profit_ratio": 0.07,
@@ -572,7 +668,7 @@ Contoh response:
 
 ---
 
-## 13. Prediksi Produk Berdasarkan Nama
+## 14. Prediksi Produk Berdasarkan Nama
 
 Jika backend belum punya `kode_barang`, backend bisa mengirim `nama_barang`.
 
@@ -613,7 +709,7 @@ Penjelasan:
 
 ---
 
-## 14. Prediksi Produk Baru / Produk Client
+## 15. Prediksi Produk Baru / Produk Client
 
 Untuk produk baru atau produk dari toko/client yang belum ada di dataset AI, backend harus mengirim fitur lengkap dari database.
 
@@ -623,6 +719,7 @@ Request:
 {
   "nama_barang": "KOPI ABC 20GR",
   "kategori": "MINUMAN",
+  "sub_kategori": "KOPI",
   "supplier": "SUPPLIER TOKO A",
   "hpp": 1500,
   "harga_toko_1": 2000,
@@ -649,7 +746,7 @@ Ini penting untuk production karena produk tiap toko/client bisa berbeda-beda.
 
 ---
 
-## 15. Field yang Sebaiknya Dikirim Backend FS
+## 16. Field yang Sebaiknya Dikirim Backend FS
 
 ### Identitas Produk
 
@@ -697,7 +794,7 @@ Ini penting untuk production karena produk tiap toko/client bisa berbeda-beda.
 
 ---
 
-## 16. Realtime Product Search dari Database FS
+## 17. Realtime Product Search dari Database FS
 
 Untuk production, search produk sebaiknya memakai data dari database FS.
 
@@ -756,19 +853,9 @@ Expected response:
 }
 ```
 
-Jika response memiliki:
-
-```json
-{
-  "source": "fs_payload"
-}
-```
-
-berarti endpoint memakai data realtime dari Backend FS, bukan data DS.
-
 ---
 
-## 17. Realtime Recommendation dari Database FS
+## 18. Realtime Recommendation dari Database FS
 
 Untuk production, gunakan endpoint POST berikut:
 
@@ -806,8 +893,6 @@ Payload:
 }
 ```
 
----
-
 ### A. Top Products
 
 Endpoint:
@@ -818,8 +903,6 @@ POST /recommendations/top-products
 
 Dipakai untuk menampilkan produk dengan aktivitas penjualan tertinggi.
 
----
-
 ### B. High Profit
 
 Endpoint:
@@ -829,14 +912,6 @@ POST /recommendations/high-profit
 ```
 
 Dipakai untuk menampilkan produk dengan estimasi profit tertinggi.
-
-Catatan:
-
-```text
-Hanya boleh ditampilkan untuk Owner.
-```
-
----
 
 ### C. Restock Priority
 
@@ -850,7 +925,7 @@ Dipakai untuk menampilkan produk yang perlu diprioritaskan untuk restock.
 
 ---
 
-## 18. Realtime Insight Summary dari Database FS
+## 19. Realtime Insight Summary dari Database FS
 
 Endpoint:
 
@@ -924,7 +999,7 @@ Response:
 
 ---
 
-## 19. Realtime Forecast KPI dari Database FS
+## 20. Realtime Forecast KPI dari Database FS
 
 Endpoint:
 
@@ -988,7 +1063,7 @@ Response:
 
 ---
 
-## 20. Aturan Produk Baru dengan Data Transaksi Sedikit
+## 21. Aturan Produk Baru dengan Data Transaksi Sedikit
 
 Kalau produk baru belum punya cukup data transaksi, backend tetap boleh mengirim request ke AI.
 
@@ -1012,7 +1087,7 @@ Data penjualan produk ini masih sedikit. Hasil AI masih berupa estimasi awal dan
 
 ---
 
-## 21. Mapping Hasil AI ke UI
+## 22. Mapping Hasil AI ke UI
 
 ### A. Fast Moving
 
@@ -1039,8 +1114,6 @@ Copywriting:
 Produk ini termasuk Fast Moving. Pastikan stok tetap tersedia agar tidak kehabisan.
 ```
 
----
-
 ### B. Low Stock / Restock
 
 Field:
@@ -1065,8 +1138,6 @@ Copywriting:
 ```text
 Produk ini perlu diprioritaskan untuk restock berdasarkan pola penjualan dan stok saat ini.
 ```
-
----
 
 ### C. Profit
 
@@ -1096,9 +1167,11 @@ Produk ini memiliki estimasi profit sedang. Owner dapat meninjau harga jual, HPP
 
 ---
 
-## 22. Role Owner dan Karyawan
+## 23. Catatan Role Owner dan Karyawan
 
-Pembatasan role wajib dilakukan di Backend Fullstack dan Frontend.
+Untuk sementara, multi-role belum diprioritaskan.
+
+Namun jika nanti multi-role diterapkan, aturan berikut sebaiknya digunakan.
 
 ### Owner boleh melihat:
 
@@ -1166,8 +1239,6 @@ Setelah difilter:
 }
 ```
 
-Backend wajib menghapus key `profit` untuk user role Karyawan.
-
 Contoh function filter:
 
 ```ts
@@ -1183,7 +1254,7 @@ function filterAiResultByRole(aiResult: any, role: "owner" | "karyawan") {
 
 ---
 
-## 23. OCR Nota/Faktur
+## 24. OCR Nota/Faktur
 
 Endpoint:
 
@@ -1207,6 +1278,13 @@ Format file yang disarankan:
 .webp
 ```
 
+Contoh test:
+
+```powershell
+curl.exe -X POST "http://localhost:8000/ocr/scan-receipt" `
+  -F "file=@C:\Users\sandi\Downloads\nota.jpg"
+```
+
 Contoh response:
 
 ```json
@@ -1215,10 +1293,10 @@ Contoh response:
   "transaction_date": "2026-05-31",
   "items": [
     {
-      "name": "INDOMIE RENDANG",
+      "nama_produk": "INDOMIE RENDANG",
       "qty": 2,
-      "price": 3500,
-      "subtotal": 7000
+      "harga": 3500,
+      "total": 7000
     }
   ],
   "subtotal": 7000,
@@ -1230,39 +1308,39 @@ Contoh response:
 }
 ```
 
-Flow OCR yang wajib dibuat di UI:
+Flow OCR yang benar:
 
 ```text
 User upload nota
-↓
+   ↓
 AI membaca nota
-↓
+   ↓
 Frontend menampilkan hasil OCR
-↓
+   ↓
 User cek dan edit manual
-↓
+   ↓
 User klik simpan
-↓
+   ↓
 Backend menyimpan ke database
 ```
 
-Untuk production, OCR juga harus lewat Backend Fullstack:
+Untuk production, OCR juga sebaiknya lewat Backend Fullstack:
 
 ```text
 Frontend upload nota
-↓
+   ↓
 Backend Fullstack menerima file
-↓
+   ↓
 Backend Fullstack forward file ke AI /ocr/scan-receipt
-↓
+   ↓
 AI mengembalikan hasil OCR
-↓
+   ↓
 Backend mengirim hasil OCR ke frontend
-↓
+   ↓
 User cek dan edit manual
-↓
+   ↓
 User klik simpan
-↓
+   ↓
 Backend menyimpan hasil final ke database
 ```
 
@@ -1278,15 +1356,21 @@ Alasannya:
 
 ---
 
-## 24. Contoh Integrasi Backend FS ke AI
+## 25. Contoh Integrasi Backend FS ke AI
 
-Contoh function JavaScript/TypeScript:
+Gunakan environment variable:
+
+```env
+AI_BASE_URL=http://localhost:8000
+```
+
+Contoh service TypeScript:
 
 ```ts
-const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
+const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
 
 export async function predictProduct(productPayload: any) {
-  const response = await fetch(`${AI_API_BASE_URL}/predict/all`, {
+  const response = await fetch(`${AI_BASE_URL}/predict/all`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1303,72 +1387,43 @@ export async function predictProduct(productPayload: any) {
 }
 ```
 
-Contoh filter role:
+Contoh dengan timeout:
 
 ```ts
-export function filterAiResponseByRole(aiResult: any, role: "owner" | "karyawan") {
-  if (role === "owner") {
-    return aiResult;
-  }
+const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
 
-  const { profit, ...safeResult } = aiResult;
-  return safeResult;
-}
-```
+export async function predictProductWithTimeout(payload: any) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-Contoh controller backend:
-
-```ts
-export async function analyzeProduct(req: any, res: any) {
-  const userRole = req.user.role;
-  const productId = req.params.productId;
-
-  const product = await db.product.findUnique({
-    where: {
-      id: productId
-    },
-    include: {
-      transactions: true,
-      stock: true,
-      supplier: true,
-      category: true
-    }
-  });
-
-  if (!product) {
-    return res.status(404).json({
-      message: "Produk tidak ditemukan"
+  try {
+    const response = await fetch(`${AI_BASE_URL}/predict/all`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || "AI prediction failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeout);
+    throw new Error("AI service timeout or unavailable");
   }
-
-  const payload = {
-    nama_barang: product.name,
-    kategori: product.category?.name,
-    supplier: product.supplier?.name,
-    hpp: product.hpp,
-    harga_toko_1: product.sellingPrice,
-    stok_min: product.minStock,
-    stok_max: product.maxStock,
-    total_stock: product.currentStock,
-    trx_total_qty: product.totalSoldQty,
-    trx_qty_30d: product.soldQty30d,
-    trx_qty_60d: product.soldQty60d,
-    trx_qty_90d: product.soldQty90d,
-    trx_count: product.transactionCount,
-    trx_total_revenue: product.totalRevenue,
-    trx_total_profit: product.totalProfit
-  };
-
-  const aiResult = await predictProduct(payload);
-  const filteredResult = filterAiResponseByRole(aiResult, userRole);
-
-  return res.json(filteredResult);
 }
 ```
 
 ---
 
-## 25. Error Handling
+## 26. Error Handling
 
 Backend FS harus siap menangani error dari AI.
 
@@ -1394,8 +1449,6 @@ Frontend message:
 Produk belum ditemukan di data AI. Lengkapi data produk terlebih dahulu agar AI bisa melakukan estimasi.
 ```
 
----
-
 ### B. Payload Tidak Valid
 
 Status:
@@ -1409,8 +1462,6 @@ Frontend message:
 ```text
 Data produk belum lengkap atau format tidak valid.
 ```
-
----
 
 ### C. AI Service Error
 
@@ -1426,108 +1477,104 @@ Frontend message:
 Layanan AI sedang bermasalah. Silakan coba lagi nanti.
 ```
 
----
-
 ### D. AI Timeout
 
-Backend sebaiknya memakai timeout saat memanggil AI.
+Frontend message:
 
-Contoh:
-
-```ts
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 15000);
-
-try {
-  const response = await fetch(`${AI_API_BASE_URL}/predict/all`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload),
-    signal: controller.signal
-  });
-
-  clearTimeout(timeout);
-  return await response.json();
-} catch (error) {
-  clearTimeout(timeout);
-  throw new Error("AI service timeout or unavailable");
-}
+```text
+Layanan AI membutuhkan waktu terlalu lama. Silakan coba lagi.
 ```
 
 ---
 
-## 26. Hal yang Wajib Dihindari FS
+## 27. Hal yang Wajib Dihindari FS
 
 Jangan lakukan ini:
 
 ```text
-1. Jangan tampilkan profit ke Karyawan.
-2. Jangan tampilkan HPP ke Karyawan.
-3. Jangan tampilkan margin ke Karyawan.
-4. Jangan simpan hasil OCR otomatis tanpa review user.
-5. Jangan menganggap AI sebagai database utama.
-6. Jangan hanya kirim nama_barang untuk produk baru tanpa fitur stok/transaksi.
-7. Jangan memakai data toko lain untuk prediksi toko berbeda.
-8. Jangan hardcode URL AI di frontend production.
-9. Jangan menyimpan GEMINI_API_KEY di frontend.
-10. Jangan pakai endpoint GET DS untuk dashboard production multi-client.
-11. Jangan frontend langsung hit AI service pada production.
+1. Jangan menganggap AI sebagai database utama.
+2. Jangan hanya kirim nama_barang untuk produk baru tanpa fitur stok/transaksi.
+3. Jangan memakai data toko lain untuk prediksi toko berbeda.
+4. Jangan hardcode URL AI di frontend production.
+5. Jangan menyimpan GEMINI_API_KEY di frontend.
+6. Jangan pakai endpoint GET DS sebagai data utama production multi-client.
+7. Jangan frontend langsung hit AI service pada production.
+8. Jangan simpan hasil OCR otomatis tanpa review user.
+9. Jangan biarkan request Backend ke AI tanpa timeout.
+10. Jangan commit file .env asli ke GitHub.
+```
+
+Jika multi-role nanti diterapkan:
+
+```text
+11. Jangan tampilkan profit ke Karyawan.
+12. Jangan tampilkan HPP ke Karyawan.
+13. Jangan tampilkan margin ke Karyawan.
 ```
 
 ---
 
-## 27. Test Otomatis AI
+## 28. Test Otomatis AI Lokal
 
 Pastikan API sudah jalan.
 
 Terminal 1:
 
 ```powershell
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
+venv\Scripts\activate
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Terminal 2:
 
 ```powershell
-python tests\auto_test_api.py --limit 20
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
+venv\Scripts\activate
+python tests\auto_test_api.py --base-url http://localhost:8000 --limit 20
 ```
 
 Expected result:
 
 ```text
-Passed : 130
+Passed : 130+
 Failed : 0
 Skipped: 1
 Status : PASSED
 ```
 
-`Skipped: 1` biasanya OCR karena belum diberi gambar nota. Itu bukan error.
+`Skipped: 1` biasanya OCR karena belum diberi gambar nota.
 
 Untuk test OCR:
 
 ```powershell
-python tests\auto_test_api.py --limit 20 --ocr-image "C:\Users\sandi\Downloads\nota.jpg" --require-ocr
+python tests\auto_test_api.py `
+  --base-url http://localhost:8000 `
+  --limit 20 `
+  --ocr-image "C:\Users\sandi\Downloads\nota.jpg" `
+  --require-ocr
+```
+
+Expected result jika OCR ikut dites:
+
+```text
+Passed : 130+
+Failed : 0
+Skipped: 0
+Status : PASSED
 ```
 
 ---
 
-## 28. Test Realtime Endpoint FS
+## 29. Test Realtime Endpoint FS
 
-Jika file ini sudah tersedia:
+Pastikan API lokal sedang berjalan:
 
-```text
-Ai/src/realtime_analytics.py
+```powershell
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Dan test ini sudah tersedia:
-
-```text
-Ai/tests/auto_test_realtime_api.py
-```
-
-Jalankan:
+Lalu jalankan:
 
 ```powershell
 python tests\auto_test_realtime_api.py
@@ -1541,8 +1588,8 @@ PASSED: all realtime endpoint tests
 
 Jika gagal di bagian health realtime, cek response:
 
-```http
-GET /health
+```powershell
+curl.exe http://localhost:8000/health
 ```
 
 Jika hasilnya:
@@ -1553,11 +1600,67 @@ Jika hasilnya:
 }
 ```
 
-Berarti file `src/realtime_analytics.py` belum terbaca atau masih ada error import.
+berarti file `src/realtime_analytics.py` belum terbaca atau masih ada error import.
 
 ---
 
-## 29. Training Model
+## 30. Test Manual Endpoint Penting
+
+### Health
+
+```powershell
+curl.exe http://localhost:8000/health
+```
+
+### Metadata
+
+```powershell
+curl.exe http://localhost:8000/metadata
+```
+
+### Product Search
+
+```powershell
+curl.exe "http://localhost:8000/products/search?q=beras&limit=10"
+```
+
+### Predict All
+
+```powershell
+$body = @{
+  kode_barang = "R1284"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8000/predict/all" `
+  -Method POST `
+  -Body $body `
+  -ContentType "application/json"
+```
+
+### Recommendations
+
+```powershell
+curl.exe "http://localhost:8000/recommendations/top-products?limit=10"
+curl.exe "http://localhost:8000/recommendations/high-profit?limit=10"
+curl.exe "http://localhost:8000/recommendations/restock-priority?limit=10"
+```
+
+### Insight
+
+```powershell
+curl.exe "http://localhost:8000/insights/summary"
+```
+
+### Forecast
+
+```powershell
+curl.exe "http://localhost:8000/forecast/daily-kpi?days=7"
+```
+
+---
+
+## 31. Training Model
 
 Untuk training semua model:
 
@@ -1593,81 +1696,219 @@ Training ulang dilakukan jika:
 
 ---
 
-## 30. Deployment
+## 32. Docker
 
-AI service bisa dideploy menggunakan Docker/Render.
+AI service bisa dijalankan menggunakan Docker.
 
-File deployment yang tersedia:
+Pastikan `Dockerfile` memakai port dari environment variable `PORT`.
 
-```text
-Dockerfile
-render.yaml
-Procfile
+Contoh command final pada Dockerfile:
+
+```dockerfile
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+```
+
+Pastikan `.dockerignore` tersedia agar file yang tidak perlu tidak masuk image.
+
+Isi `.dockerignore` yang disarankan:
+
+```dockerignore
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+logs/
+*.log
+.git/
+.gitignore
 docker-compose.yml
+README.md
 ```
 
-Sebelum deploy, pastikan test berhasil:
-
-```powershell
-python tests\auto_test_api.py --limit 20
-python tests\auto_test_realtime_api.py
-```
-
-Keduanya harus passed.
-
-Pastikan environment production berisi:
-
-```env
-APP_ENV=production
-GEMINI_API_KEY=ISI_API_KEY_GEMINI
-GEMINI_OCR_MODEL=gemini-3.5-flash
-TF_CPP_MIN_LOG_LEVEL=2
-```
-
-Jangan commit `.env` asli ke GitHub.
+Jangan masukkan `models/` ke `.dockerignore`, karena model harus ikut masuk ke Docker image.
 
 ---
 
-## 31. Docker
+## 33. Docker Build Test
 
-Build image:
-
-```powershell
-docker build -t tata-arta-ai .
-```
-
-Run container:
+Build image dari folder `Ai`:
 
 ```powershell
-docker run -p 8000:8000 --env-file .env tata-arta-ai
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
+docker build --progress=plain -t tata-arta-ai .
 ```
 
-Cek health:
+Jika build pertama lama, biasanya karena download dependency besar seperti TensorFlow.
+
+Itu bukan berarti kode AI rusak.
+
+---
+
+## 34. Docker Run Test
+
+Jalankan container:
+
+```powershell
+docker run --rm `
+  --name tata-arta-ai-test `
+  -p 8001:10000 `
+  --env-file .env `
+  -e PORT=10000 `
+  tata-arta-ai
+```
+
+Penjelasan:
 
 ```text
-http://localhost:8000/health
+-p 8001:10000
+```
+
+Artinya:
+
+```text
+localhost:8001 di laptop
+   ↓
+port 10000 di container
+```
+
+Cek health dari terminal baru:
+
+```powershell
+curl.exe http://localhost:8001/health
+```
+
+Jalankan test otomatis ke Docker container:
+
+```powershell
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
+venv\Scripts\activate
+
+python tests\auto_test_api.py --base-url http://localhost:8001 --limit 20
+```
+
+Jika ingin test OCR di Docker:
+
+```powershell
+python tests\auto_test_api.py `
+  --base-url http://localhost:8001 `
+  --limit 20 `
+  --ocr-image "C:\Users\sandi\Downloads\nota.jpg" `
+  --require-ocr
+```
+
+Expected result:
+
+```text
+Failed : 0
+Status : PASSED
+```
+
+Jika OCR ikut dites:
+
+```text
+Failed : 0
+Skipped: 0
+Status : PASSED
 ```
 
 ---
 
-## 32. Render Deployment
+## 35. Docker Troubleshooting
 
-Jika memakai Render, pastikan environment variable berikut diisi di dashboard Render:
+### A. Docker command tidak dikenali
+
+Error:
+
+```text
+docker : The term 'docker' is not recognized
+```
+
+Solusi:
+
+```text
+Install Docker Desktop.
+Buka Docker Desktop.
+Pastikan Docker Desktop running.
+Buka ulang PowerShell/VSCode.
+```
+
+### B. Docker daemon belum jalan
+
+Error:
+
+```text
+failed to connect to the docker API
+```
+
+Solusi:
+
+```text
+Buka Docker Desktop dari Start Menu.
+Tunggu sampai status Docker Desktop running.
+Jalankan docker info.
+```
+
+Command cek:
+
+```powershell
+docker info
+```
+
+### C. Build lama di TensorFlow
+
+Jika stuck di:
+
+```text
+Downloading tensorflow...
+```
+
+Itu karena TensorFlow berukuran besar.
+
+Solusi:
+
+```text
+Tunggu sampai selesai jika koneksi stabil.
+Pastikan internet stabil.
+Gunakan docker build --progress=plain agar terlihat prosesnya.
+```
+
+---
+
+## 36. Render Deployment
+
+AI service bisa dideploy ke Render sebagai Docker Web Service.
+
+Setting Render:
+
+```text
+New Web Service
+Repository      : capstone66/Tata-Arta
+Root Directory  : Ai
+Runtime         : Docker
+Dockerfile Path : Dockerfile
+```
+
+Environment variables di Render:
 
 ```env
 APP_ENV=production
+TF_CPP_MIN_LOG_LEVEL=2
+CORS_ALLOW_ORIGINS=*
 GEMINI_API_KEY=ISI_API_KEY_GEMINI
 GEMINI_OCR_MODEL=gemini-3.5-flash
-TF_CPP_MIN_LOG_LEVEL=2
 ```
 
 Setelah deploy, cek:
 
-```text
-https://URL-RENDER/health
+```powershell
+curl.exe https://URL-AI-SERVICE.onrender.com/health
 ```
 
-Expected:
+Expected response:
 
 ```json
 {
@@ -1683,7 +1924,75 @@ Expected:
 
 ---
 
-## 33. Production Checklist
+## 37. Test Remote Setelah Deploy
+
+Setelah AI berhasil deploy ke Render, jalankan test dari laptop:
+
+```powershell
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta\Ai
+venv\Scripts\activate
+
+python tests\auto_test_api.py `
+  --base-url https://URL-AI-SERVICE.onrender.com `
+  --limit 20 `
+  --skip-local-files
+```
+
+Jika ingin test OCR di service online:
+
+```powershell
+python tests\auto_test_api.py `
+  --base-url https://URL-AI-SERVICE.onrender.com `
+  --limit 20 `
+  --ocr-image "C:\Users\sandi\Downloads\nota.jpg" `
+  --require-ocr `
+  --skip-local-files
+```
+
+Target:
+
+```text
+Failed : 0
+Status : PASSED
+```
+
+Jika OCR ikut dites:
+
+```text
+Failed : 0
+Skipped: 0
+Status : PASSED
+```
+
+---
+
+## 38. Integrasi dengan Backend Fullstack
+
+Setelah AI berhasil deploy, update `.env` di Backend Fullstack.
+
+Local AI:
+
+```env
+AI_BASE_URL=http://localhost:8000
+```
+
+Docker AI local test:
+
+```env
+AI_BASE_URL=http://localhost:8001
+```
+
+Production AI Render:
+
+```env
+AI_BASE_URL=https://URL-AI-SERVICE.onrender.com
+```
+
+Backend Fullstack akan memanggil AI menggunakan `AI_BASE_URL`.
+
+---
+
+## 39. Production Checklist
 
 Sebelum production, pastikan:
 
@@ -1691,24 +2000,35 @@ Sebelum production, pastikan:
 [ ] AI service berhasil deploy.
 [ ] GET /health menghasilkan status ok.
 [ ] GET /health menghasilkan realtime=true.
+[ ] Semua model bernilai true.
 [ ] python tests\auto_test_api.py --limit 20 berhasil.
 [ ] python tests\auto_test_realtime_api.py berhasil.
-[ ] Backend Fullstack memakai AI_API_BASE_URL dari .env.
+[ ] Docker build berhasil.
+[ ] Docker run berhasil.
+[ ] Test ke Docker container berhasil.
+[ ] Test OCR berhasil jika memakai --require-ocr.
+[ ] Backend Fullstack memakai AI_BASE_URL dari .env.
 [ ] Frontend tidak langsung hit AI service.
 [ ] Backend Fullstack memakai endpoint POST realtime.
-[ ] Backend Fullstack tidak memakai endpoint GET DS untuk data production.
+[ ] Backend Fullstack tidak memakai endpoint GET DS untuk data production multi-client.
 [ ] Backend Fullstack mengirim payload produk lengkap.
-[ ] Backend Fullstack memfilter profit/HPP untuk Karyawan.
 [ ] OCR wajib review manual sebelum simpan.
 [ ] GEMINI_API_KEY tidak disimpan di frontend.
 [ ] .env asli tidak masuk GitHub.
 [ ] Backend punya timeout dan error handling saat AI service down.
-[ ] CORS production tidak dibuka bebas tanpa kebutuhan.
+[ ] CORS production disesuaikan dengan domain frontend/backend jika sudah final.
+```
+
+Jika multi-role nanti diterapkan:
+
+```text
+[ ] Backend Fullstack memfilter profit/HPP untuk Karyawan.
+[ ] Frontend menyembunyikan field profit/HPP dari Karyawan.
 ```
 
 ---
 
-## 34. Aturan Production untuk Multi-Client
+## 40. Aturan Production untuk Multi-Client
 
 Untuk banyak toko/client, Backend FS wajib mengirim data sesuai toko masing-masing.
 
@@ -1716,27 +2036,29 @@ Contoh alur:
 
 ```text
 User toko A klik analisis produk
-↓
+   ↓
 Backend ambil produk dari database toko A
-↓
+   ↓
 Backend hitung stok, transaksi, revenue, profit toko A
-↓
+   ↓
 Backend kirim payload lengkap ke AI
-↓
+   ↓
 AI mengembalikan prediksi
-↓
-Backend filter response sesuai role
-↓
+   ↓
+Backend mengirim hasil ke frontend
+   ↓
 Frontend menampilkan hasil
 ```
 
 Jangan memakai data toko lain untuk prediksi toko berbeda.
 
-AI tidak perlu menyimpan semua data toko. Backend cukup mengirim fitur produk yang sudah dihitung dari database masing-masing toko.
+AI tidak perlu menyimpan semua data toko.
+
+Backend cukup mengirim fitur produk yang sudah dihitung dari database masing-masing toko.
 
 ---
 
-## 35. Kesimpulan untuk Fullstack
+## 41. Kesimpulan untuk Fullstack
 
 Untuk production realtime:
 
@@ -1749,44 +2071,485 @@ Untuk production realtime:
 6. Endpoint POST dipakai untuk realtime dari database FS.
 7. AI hanya memproses data yang dikirim backend.
 8. Backend tetap menjadi sumber data utama.
-9. Owner boleh melihat profit/HPP/margin.
-10. Karyawan tidak boleh melihat profit/HPP/margin.
-11. OCR wajib manual: scan → review/edit → simpan.
-12. Untuk banyak toko/client, backend harus menghitung fitur dari database masing-masing toko.
+9. OCR wajib manual: scan → review/edit → simpan.
+10. Untuk banyak toko/client, backend harus menghitung fitur dari database masing-masing toko.
+11. Multi-role bisa ditambahkan nanti jika sudah dibutuhkan.
 ```
 
-AI service siap dipakai oleh Fullstack selama backend mengirim payload yang benar, memakai endpoint POST untuk production realtime, dan melakukan filter role dengan benar.
+AI service siap dipakai oleh Fullstack selama backend mengirim payload yang benar, memakai endpoint POST untuk production realtime, dan melakukan error handling dengan benar.
 
 ---
 
-## 36. Git Workflow
+## 42. File yang Boleh Di-commit
 
-Setelah perubahan selesai:
+File AI yang boleh di-commit:
+
+```text
+Ai/README.md
+Ai/Dockerfile
+Ai/.dockerignore
+Ai/.env.example
+Ai/requirements.txt
+Ai/api/
+Ai/src/
+Ai/ocr/
+Ai/tests/
+Ai/models/
+Ai/train_all.py
+```
+
+File yang tidak boleh di-commit:
+
+```text
+Ai/.env
+Ai/venv/
+Ai/__pycache__/
+Ai/.pytest_cache/
+Ai/logs/
+```
+
+---
+
+## 43. Git Workflow
+
+Setelah perubahan selesai, cek status:
 
 ```powershell
+cd C:\Users\sandi\Downloads\Projek\Tata-Arta
 git status
 ```
 
-Tambahkan file:
+Tambahkan file yang berubah:
 
 ```powershell
-git add Ai/README.md
-```
-
-Jika ada file realtime baru:
-
-```powershell
-git add Ai/src/realtime_analytics.py Ai/tests/auto_test_realtime_api.py
+git add Ai/README.md Ai/Dockerfile Ai/.dockerignore Ai/.env.example Ai/requirements.txt
 ```
 
 Commit:
 
 ```powershell
-git commit -m "docs: update AI README for production realtime integration"
+git commit -m "docs: complete AI README for deployment"
 ```
 
 Push:
 
 ```powershell
 git push origin main
+```
+
+Jika hanya README yang berubah:
+
+```powershell
+git add Ai/README.md
+git commit -m "docs: complete AI README"
+git push origin main
+```
+
+
+
+## Quick Guide untuk Tim Fullstack
+
+Bagian ini adalah ringkasan cepat untuk integrasi Backend Fullstack ke AI service.
+
+### 1. URL AI Service
+
+Backend Fullstack harus menyimpan URL AI di `.env`.
+
+Local:
+
+```env
+AI_BASE_URL=http://localhost:8000
+```
+
+Docker local test:
+
+```env
+AI_BASE_URL=http://localhost:8001
+```
+
+Production:
+
+```env
+AI_BASE_URL=https://URL-AI-SERVICE.onrender.com
+```
+
+Gunakan nama env:
+
+```env
+AI_BASE_URL
+```
+
+Jangan gunakan `AI_API_BASE_URL` jika kode backend membaca `AI_BASE_URL`.
+
+---
+
+### 2. Endpoint Utama untuk Prediksi Produk
+
+Endpoint utama yang dipakai Backend FS:
+
+```http
+POST /predict/all
+```
+
+Full URL local:
+
+```text
+http://localhost:8000/predict/all
+```
+
+Full URL production:
+
+```text
+https://URL-AI-SERVICE.onrender.com/predict/all
+```
+
+Endpoint ini mengembalikan 3 hasil sekaligus:
+
+1. Fast moving prediction.
+2. Low stock / restock prediction.
+3. Profit prediction.
+
+---
+
+### 3. Cara Pakai untuk Produk Lama
+
+Jika produk sudah ada di dataset AI, backend cukup mengirim `kode_barang`.
+
+Request:
+
+```json
+{
+  "kode_barang": "R1284"
+}
+```
+
+Contoh fetch dari Backend FS:
+
+```ts
+const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
+
+export async function predictExistingProduct(kodeBarang: string) {
+  const response = await fetch(`${AI_BASE_URL}/predict/all`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      kode_barang: kodeBarang
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail || "AI prediction failed");
+  }
+
+  return response.json();
+}
+```
+
+---
+
+### 4. Cara Pakai untuk Produk Baru dari Database FS
+
+Jika produk belum ada di dataset AI, backend harus mengirim fitur lengkap produk.
+
+Request minimal yang disarankan:
+
+```json
+{
+  "kode_barang": "FS001",
+  "nama_barang": "KOPI ABC 20GR",
+  "kategori": "MINUMAN",
+  "sub_kategori": "KOPI",
+  "supplier": "SUPPLIER TOKO A",
+  "hpp": 1500,
+  "harga_toko_1": 2000,
+  "stok_min": 10,
+  "stok_max": 100,
+  "total_stock": 50,
+  "trx_total_qty": 120,
+  "trx_qty_30d": 45,
+  "trx_qty_60d": 80,
+  "trx_qty_90d": 120,
+  "trx_count": 60,
+  "trx_total_revenue": 240000,
+  "trx_total_profit": 60000
+}
+```
+
+Contoh fetch dari Backend FS:
+
+```ts
+const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
+
+export async function predictProductFromDatabase(product: any) {
+  const payload = {
+    kode_barang: product.kodeBarang,
+    nama_barang: product.nama,
+    kategori: product.kategori,
+    sub_kategori: product.subKategori,
+    supplier: product.supplier,
+    hpp: product.hpp,
+    harga_toko_1: product.hargaJual,
+    stok_min: product.stokMin,
+    stok_max: product.stokMax,
+    total_stock: product.totalStock,
+    trx_total_qty: product.totalQtySold,
+    trx_qty_30d: product.qtySold30d,
+    trx_qty_60d: product.qtySold60d,
+    trx_qty_90d: product.qtySold90d,
+    trx_count: product.transactionCount,
+    trx_total_revenue: product.totalRevenue,
+    trx_total_profit: product.totalProfit
+  };
+
+  const response = await fetch(`${AI_BASE_URL}/predict/all`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail || "AI prediction failed");
+  }
+
+  return response.json();
+}
+```
+
+Jika response memiliki:
+
+```json
+{
+  "match_type": "manual_features"
+}
+```
+
+berarti AI memakai fitur yang dikirim dari Backend FS, bukan dataset demo AI.
+
+---
+
+### 5. Response yang Perlu Dipakai Frontend
+
+Contoh response utama:
+
+```json
+{
+  "matched_product": {
+    "kode_barang": "FS001",
+    "nama": "KOPI ABC 20GR",
+    "kategori": "MINUMAN",
+    "match_type": "manual_features"
+  },
+  "fast_moving": {
+    "prediction": "Fast Moving",
+    "confidence": 0.93
+  },
+  "low_stock": {
+    "prediction": "Restock Priority",
+    "confidence": 0.88,
+    "restock_priority_score": 0.88,
+    "message": "Produk perlu diprioritaskan untuk restock."
+  },
+  "profit": {
+    "estimated_profit_ratio": 0.15,
+    "estimated_profit_percent": 15.0,
+    "profit_category": "Medium Profit"
+  }
+}
+```
+
+Mapping ke UI:
+
+| Field AI                           | Dipakai untuk                          |
+| ---------------------------------- | -------------------------------------- |
+| `fast_moving.prediction`           | Status produk cepat/lambat laku        |
+| `fast_moving.confidence`           | Tingkat keyakinan prediksi fast moving |
+| `low_stock.prediction`             | Status stok aman/perlu restock         |
+| `low_stock.restock_priority_score` | Skor prioritas restock                 |
+| `low_stock.message`                | Pesan rekomendasi restock              |
+| `profit.profit_category`           | Kategori profit produk                 |
+| `profit.estimated_profit_percent`  | Estimasi persentase profit             |
+
+---
+
+### 6. Endpoint Rekomendasi Realtime
+
+Untuk production, Backend FS sebaiknya memakai endpoint POST realtime.
+
+Top products:
+
+```http
+POST /recommendations/top-products
+```
+
+High profit:
+
+```http
+POST /recommendations/high-profit
+```
+
+Restock priority:
+
+```http
+POST /recommendations/restock-priority
+```
+
+Payload:
+
+```json
+{
+  "limit": 10,
+  "products": [
+    {
+      "kode_barang": "FS001",
+      "nama_barang": "KOPI ABC 20GR",
+      "kategori": "MINUMAN",
+      "hpp": 1500,
+      "harga_toko_1": 2000,
+      "stok_min": 10,
+      "stok_max": 100,
+      "total_stock": 7,
+      "trx_total_qty": 120,
+      "trx_qty_30d": 45,
+      "trx_qty_60d": 80,
+      "trx_qty_90d": 120,
+      "trx_count": 60,
+      "trx_total_revenue": 240000,
+      "trx_total_profit": 60000
+    }
+  ]
+}
+```
+
+---
+
+### 7. Endpoint Insight dan Forecast Realtime
+
+Insight summary:
+
+```http
+POST /insights/summary
+```
+
+Forecast KPI:
+
+```http
+POST /forecast/daily-kpi
+```
+
+Gunakan endpoint ini jika Backend FS sudah punya data dashboard, transaksi, stok, revenue, expense, dan profit dari database.
+
+---
+
+### 8. OCR Nota/Faktur
+
+Endpoint AI:
+
+```http
+POST /ocr/scan-receipt
+```
+
+Format request:
+
+```text
+multipart/form-data
+field: file
+```
+
+Flow yang benar:
+
+```text
+Frontend upload nota
+   ↓
+Backend FS menerima file
+   ↓
+Backend FS forward file ke AI /ocr/scan-receipt
+   ↓
+AI mengembalikan hasil OCR
+   ↓
+Backend FS mengirim hasil OCR ke frontend
+   ↓
+User cek dan edit hasil OCR
+   ↓
+User klik simpan
+   ↓
+Backend FS menyimpan data final ke database
+```
+
+Catatan penting:
+
+```text
+Hasil OCR tidak boleh langsung disimpan otomatis.
+User harus cek dan edit dulu sebelum disimpan.
+```
+
+---
+
+### 9. Error Handling Wajib di Backend FS
+
+Backend FS harus menangani kondisi berikut:
+
+| Kondisi                | Tindakan Backend                                    |
+| ---------------------- | --------------------------------------------------- |
+| AI service mati        | Return message “Layanan AI sedang tidak tersedia.”  |
+| AI timeout             | Return message “AI membutuhkan waktu terlalu lama.” |
+| Produk tidak ditemukan | Kirim ulang dengan fitur lengkap produk             |
+| Payload tidak lengkap  | Return validasi ke frontend                         |
+| OCR gagal              | Minta user upload ulang / input manual              |
+
+Contoh fetch dengan timeout:
+
+```ts
+const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
+
+export async function callAiWithTimeout(path: string, payload: any) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(`${AI_BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || "AI request failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeout);
+    throw new Error("AI service timeout or unavailable");
+  }
+}
+```
+
+---
+
+### 10. Hal yang Harus Dihindari Tim FS
+
+Jangan lakukan ini:
+
+```text
+1. Jangan frontend langsung hit AI service pada production.
+2. Jangan simpan GEMINI_API_KEY di frontend.
+3. Jangan hardcode URL AI di kode frontend.
+4. Jangan pakai AI sebagai database utama.
+5. Jangan hanya kirim nama_barang untuk produk baru tanpa fitur stok/transaksi.
+6. Jangan pakai endpoint GET demo DS sebagai sumber utama production.
+7. Jangan simpan hasil OCR otomatis tanpa review user.
+8. Jangan request ke AI tanpa timeout.
+9. Jangan commit .env asli ke GitHub.
 ```
