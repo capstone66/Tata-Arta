@@ -1,31 +1,45 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class ProductInput(BaseModel):
-    kode_barang: Optional[str] = Field(default=None, description="Recommended: product code from dataset.")
-    nama: Optional[str] = None
-    kategori: Optional[str] = None
-    supplier: Optional[str] = None
-    satuan_1: Optional[str] = None
+    kode_barang: Any = Field(default=None, description="Optional product code.")
+    nama_barang: Any = Field(default=None, description="Recommended product name from UI.")
+    nama_produk: Any = Field(default=None, description="Alternative product name.")
+    nama: Any = Field(default=None, description="Alternative product name from dataset.")
 
-    hpp: Optional[float] = None
-    harga_toko_1: Optional[float] = None
-    isi: Optional[float] = None
-    toko: Optional[float] = None
-    gudang: Optional[float] = None
-    stok_min: Optional[float] = None
-    stok_max: Optional[float] = None
+    kategori: Any = None
+    sub_kategori: Any = None
+    supplier: Any = None
+    satuan_1: Any = None
+    lokasi: Any = None
+    ukuran: Any = None
+    warna: Any = None
 
-    trx_total_qty: Optional[float] = None
-    trx_qty_30d: Optional[float] = None
-    trx_qty_90d: Optional[float] = None
-    trx_count: Optional[float] = None
-    trx_total_revenue: Optional[float] = None
-    trx_total_profit: Optional[float] = None
+    hpp: Any = None
+    harga_toko_1: Any = None
+    harga_toko_2: Any = None
+    harga_toko_3: Any = None
+    harga_partai_1: Any = None
+    harga_cabang_1: Any = None
+
+    isi: Any = None
+    toko: Any = None
+    gudang: Any = None
+    stok_min: Any = None
+    stok_max: Any = None
+    total_stock: Any = None
+
+    trx_total_qty: Any = None
+    trx_qty_30d: Any = None
+    trx_qty_60d: Any = None
+    trx_qty_90d: Any = None
+    trx_count: Any = None
+    trx_total_revenue: Any = None
+    trx_total_profit: Any = None
 
 
 class OCRResponse(BaseModel):

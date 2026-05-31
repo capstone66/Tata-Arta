@@ -5,7 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import ProductInput
 from ocr.gemini_ocr import GeminiOCRService
-from src.inference import model_availability, predict_all, predict_fast_moving, predict_low_stock, predict_profit
+from src.inference import (
+    ProductNotFoundError,
+    model_availability,
+    predict_all,
+    predict_fast_moving,
+    predict_low_stock,
+    predict_profit,
+    search_products,
+)
+
 from src.recommendation import ai_summary, daily_kpi_forecast, high_profit_products, restock_priority, top_products
 
 app = FastAPI(
@@ -13,6 +22,13 @@ app = FastAPI(
     description="FastAPI service for Fast Moving Detection, Restock Priority, Profit Prediction, Recommendations, KPI Forecast, and Gemini OCR.",
     version="4.0.0",
 )
+
+def handle_prediction_error(exc: Exception):
+    if isinstance(exc, ProductNotFoundError):
+        raise HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=400, detail=str(exc))
+    raise HTTPException(status_code=500, detail=str(exc))
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +76,7 @@ def api_predict_fast_moving(payload: ProductInput):
     try:
         return predict_fast_moving(payload.model_dump(exclude_none=True))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        handle_prediction_error(exc)
 
 
 @app.post("/predict/low-stock")
@@ -68,7 +84,7 @@ def api_predict_low_stock(payload: ProductInput):
     try:
         return predict_low_stock(payload.model_dump(exclude_none=True))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        handle_prediction_error(exc)
 
 
 @app.post("/predict/profit")
@@ -76,7 +92,7 @@ def api_predict_profit(payload: ProductInput):
     try:
         return predict_profit(payload.model_dump(exclude_none=True))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        handle_prediction_error(exc)
 
 
 @app.post("/predict/all")
@@ -84,7 +100,7 @@ def api_predict_all(payload: ProductInput):
     try:
         return predict_all(payload.model_dump(exclude_none=True))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        handle_prediction_error(exc)
 
 
 @app.get("/recommendations/top-products")
@@ -118,5 +134,12 @@ async def scan_receipt(file: UploadFile = File(...)):
         content = await file.read()
         service = GeminiOCRService()
         return service.extract_receipt(content, file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@app.get("/products/search")
+def api_search_products(q: str, limit: int = 10):
+    try:
+        return search_products(q, limit)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
