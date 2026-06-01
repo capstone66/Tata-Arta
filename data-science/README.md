@@ -1,332 +1,172 @@
 # UMKM Analytics Dashboard
 
-## Project Overview
-
-UMKM Analytics Dashboard adalah proyek Data Science dan Business Intelligence yang bertujuan membantu pelaku UMKM dalam memantau performa bisnis secara interaktif melalui visualisasi data dan dashboard analytics.
-
-Project ini melakukan proses data secara end-to-end mulai dari:
-
-* Data Cleaning
-* Generate transaksi otomatis
-* Feature Engineering
-* Exploratory Data Analysis (EDA)
-* Dashboard Analytics menggunakan Streamlit
-
-Dataset yang digunakan berasal dari data barang UMKM yang kemudian diproses dan dikembangkan menjadi sistem analytics lengkap.
+Sistem analitik **end-to-end** berbasis Data Science untuk membantu pelaku UMKM memantau performa bisnis melalui dashboard interaktif.
 
 ---
 
-# Business Questions
+## Problem Statement
 
-1. Produk apa yang paling banyak terjual?
-2. Produk mana yang memiliki profit margin tertinggi?
-3. Bagaimana tren omset harian dan bulanan?
-4. Produk mana yang memiliki stok kritis?
-5. Metode pembayaran apa yang paling sering digunakan?
-6. Bagaimana performa profit UMKM?
-7. Bagaimana total pengeluaran dan laba bisnis?
-8. Produk apa yang termasuk fast moving product?
+Pelaku UMKM tidak memiliki sistem yang mampu memantau performa bisnis secara real-time. Data penjualan, stok, dan keuntungan hanya tersimpan di spreadsheet tanpa analisis mendalam — keputusan bisnis diambil berdasarkan intuisi, bukan data.
+
+**Solusi:** Pipeline DS end-to-end dari raw data inventori → cleaned dataset → feature engineering → EDA → dashboard interaktif Streamlit.
 
 ---
 
-# Tech Stack
+## Business Questions
 
-Project menggunakan teknologi berikut:
-
-* Python
-* Pandas
-* NumPy
-* Plotly
-* Streamlit
-* Scikit-learn
-* OpenPyXL
-* XLRD
+| # | Pertanyaan | Metrik | Dijawab di |
+|---|-----------|--------|-----------|
+| 1 | Produk apa yang paling banyak terjual? | Total qty per produk | EDA + Dashboard |
+| 2 | Produk mana yang profit margin tertinggi? | (harga_jual−hpp)/harga_jual | Feature Eng + EDA |
+| 3 | Bagaimana tren omset harian dan bulanan? | Revenue agregasi per hari/bulan | EDA + Dashboard |
+| 4 | Produk mana yang memiliki stok kritis? | total_stock < stok_min | Feature Eng + Dashboard |
+| 5 | Metode pembayaran apa yang paling sering? | Distribusi payment_method | EDA + Dashboard |
+| 6 | Bagaimana performa profit UMKM? | Total profit, margin keseluruhan | EDA + Dashboard |
+| 7 | Berapa total pengeluaran dan laba bisnis? | Expense vs revenue | Dashboard KPI |
+| 8 | Produk apa yang fast moving? | total_sales >= Q75 | Feature Eng + Dashboard |
 
 ---
 
-# Project Structure
+## Struktur Project
 
-```text
-umkm-analytic/
-
-└── data-science/
-    ├── data/
-    │   ├── raw/
-    │   │   └── data_barang_30000.xls
-    │   │
-    │   └── processed/
-    │       ├── products_clean.csv
-    │       ├── transactions.csv
-    │       ├── products_featured.csv
-    │       └── daily_kpi.csv
-    │
-    ├── scripts/
-    │   ├── cleaning.py
-    │   ├── generate_transactions.py
-    │   └── feature_engineering.py
-    │
-    ├── notebooks/
-    │   └── eda.ipynb
-    │
-    ├── dashboard/
-    │   └── app.py
-    │
-    ├── README.md
-    ├── requirements.txt
-    └── data_dictionary.md
+```
+data-science/
+├── data/
+│   ├── raw/
+│   │   └── data_barang_30000.xls          ← Dataset asli (input pipeline)
+│   └── processed/
+│       ├── products_clean.csv             ← Output cleaning.py
+│       ├── transactions.csv               ← Output generate_transactions.py
+│       ├── daily_kpi.csv                  ← Output generate_transactions.py
+│       ├── stock_after_transactions.csv   ← Output generate_transactions.py
+│       ├── products_featured.csv          ← Output feature_engineering.py
+│       ├── price_issues_report.csv        ← Output flag_price_issues.py
+│       └── metadata.json                  ← Output generate_metadata.py
+│
+├── scripts/
+│   ├── cleaning.py                        ← Tahap 1: Data cleaning
+│   ├── generate_transactions.py           ← Tahap 2: Simulasi transaksi
+│   ├── feature_engineering.py            ← Tahap 3: Feature engineering
+│   ├── flag_price_issues.py              ← Tahap 4: Deteksi produk bermasalah
+│   ├── generate_metadata.py              ← Tahap 5: Data versioning
+│   └── ab_testing.py                     ← Opsional: A/B Testing promo
+│
+├── notebooks/
+│   └── eda.ipynb                          ← EDA lengkap dengan markdown
+│
+├── dashboard/
+│   └── app.py                             ← Dashboard Streamlit
+│
+├── README.md
+├── data_dictionary.md                     ← Dokumentasi semua kolom
+└── requirements.txt
 ```
 
 ---
 
-# Data Pipeline
+## Pipeline (Urutan Eksekusi)
 
-## 1. Data Cleaning
+```
+1. cleaning.py              → products_clean.csv
+2. generate_transactions.py → transactions.csv, daily_kpi.csv, stock_after_transactions.csv
+3. feature_engineering.py   → products_featured.csv
+4. flag_price_issues.py     → products_featured.csv (+ kolom baru) + price_issues_report.csv
+5. generate_metadata.py     → metadata.json
+```
 
-Tahap ini melakukan:
+---
 
-* Membersihkan missing values
-* Menghapus duplicate data
-* Merapikan nama kolom
-* Menyiapkan dataset siap analisis
-
-Menjalankan script:
+## Instalasi & Cara Menjalankan
 
 ```bash
-python data-science/scripts/cleaning.py
-```
+# 1. Install dependencies
+pip install -r requirements.txt
 
-Output:
+# 2. Jalankan pipeline berurutan
+python scripts/cleaning.py
+python scripts/generate_transactions.py
+python scripts/feature_engineering.py
+python scripts/flag_price_issues.py
+python scripts/generate_metadata.py
 
-* `products_clean.csv`
+# 3. (Opsional) A/B Testing
+python scripts/ab_testing.py
 
----
-
-## 2. Generate Transactions
-
-Tahap ini membuat simulasi transaksi otomatis sebanyak ribuan data untuk kebutuhan analytics dashboard.
-
-Fitur yang ditambahkan:
-
-* Payment Method
-* Transaction Status
-* Expense/Pengeluaran
-* Daily KPI Summary
-
-Menjalankan script:
-
-```bash
-python data-science/scripts/generate_transactions.py
-```
-
-Output:
-
-* `transactions.csv`
-* `daily_kpi.csv`
-
----
-
-## 3. Feature Engineering
-
-Tahap feature engineering digunakan untuk menambahkan fitur baru seperti:
-
-* Profit Margin
-* Low Stock Flag
-* Fast Moving Product
-* Total Sales
-
-Menjalankan script:
-
-```bash
-python data-science/scripts/feature_engineering.py
-```
-
-Output:
-
-* `products_featured.csv`
-
----
-
-# Exploratory Data Analysis (EDA)
-
-EDA dilakukan untuk:
-
-* Menganalisis tren penjualan
-* Mengetahui produk terlaris
-* Menganalisis profit
-* Mengetahui distribusi metode pembayaran
-* Melihat performa inventory
-* Mengetahui produk low stock
-
-EDA dilakukan menggunakan:
-
-* Pandas
-* Plotly
-* Matplotlib
-
----
-
-# Dashboard Features
-
-Dashboard dibuat menggunakan Streamlit dan memiliki fitur:
-
-## KPI Dashboard
-
-* Total Revenue
-* Total Profit
-* Total Expense
-* Total Transactions
-
-## Analytics
-
-* Revenue Trend
-* Profit Analysis
-* Expense Analysis
-* Payment Method Distribution
-* Top Selling Products
-* Low Stock Products
-* Fast Moving Products
-
-## Interactive Visualization
-
-* Line Chart
-* Bar Chart
-* Pie Chart
-* Data Table
-
----
-
-# Installation
-
-Install dependencies:
-
-```bash
-pip install -r data-science/requirements.txt
+# 4. Jalankan dashboard
+streamlit run dashboard/app.py
 ```
 
 ---
 
-# Run Dashboard
+## Dataset
 
-Menjalankan dashboard Streamlit:
+| File | Baris | Kolom | Keterangan |
+|------|-------|-------|-----------|
+| data_barang_30000.xls | ~48.000 | — | Raw data inventori UMKM |
+| products_clean.csv | 32.193 | 34 | Setelah cleaning (hpp>0 & harga>0) |
+| transactions.csv | 100.000 | 17 | Simulasi transaksi 1 tahun |
+| products_featured.csv | 32.193 | 41 | + fitur: margin, flags, price review |
+| daily_kpi.csv | 366 | 6 | Agregasi KPI harian |
 
-```bash
-streamlit run data-science/dashboard/app.py
-```
-
----
-
-# Dataset
-
-## products_clean.csv
-
-Dataset produk hasil cleaning.
-
-## transactions.csv
-
-Dataset transaksi hasil generate otomatis.
-
-## products_featured.csv
-
-Dataset hasil feature engineering.
-
-## daily_kpi.csv
-
-Ringkasan KPI harian.
+Dokumentasi lengkap semua kolom → [`data_dictionary.md`](data_dictionary.md)
 
 ---
 
-# Data Science Workflow
+## Tech Stack
 
-Project ini telah memenuhi workflow Data Science:
-
-* Gathering Data
-* Assessing Data
-* Cleaning Data
-* Exploratory Data Analysis
-* Feature Engineering
-* Visualization
-* Dashboard Development
-
----
-
-# Data Dictionary
-
-## products_clean.csv
-
-| Column       | Description        |
-| ------------ | ------------------ |
-| kode_barang  | Product code       |
-| nama         | Product name       |
-| kategori     | Product category   |
-| supplier     | Supplier name      |
-| harga_toko_1 | Selling price      |
-| hpp          | Cost of goods sold |
-| stok         | Product stock      |
+| Library | Versi | Kegunaan |
+|---------|-------|---------|
+| pandas | ≥2.0 | Data processing |
+| numpy | ≥1.24 | Operasi numerik |
+| plotly | ≥5.15 | Visualisasi interaktif |
+| streamlit | ≥1.25 | Dashboard |
+| scipy | ≥1.11 | A/B Testing statistik |
+| scikit-learn | ≥1.3 | Feature engineering & baseline model |
+| matplotlib | ≥3.7 | Visualisasi notebook |
 
 ---
 
-## transactions.csv
+## Hasil EDA — Insight Utama
 
-| Column         | Description        |
-| -------------- | ------------------ |
-| transaction_id | Transaction ID     |
-| tanggal        | Transaction date   |
-| kode_barang    | Product code       |
-| nama_produk    | Product name       |
-| kategori       | Product category   |
-| supplier       | Supplier           |
-| qty            | Quantity sold      |
-| harga_jual     | Selling price      |
-| hpp            | Cost price         |
-| total          | Total revenue      |
-| profit         | Total profit       |
-| expense        | Total expense      |
-| payment_method | Payment method     |
-| status         | Transaction status |
-| tahun          | Transaction year   |
-| bulan          | Transaction month  |
-| hari           | Transaction day    |
+- **Revenue stabil** Rp 340–385M/bulan (Jun 2025–Apr 2026), puncak Jul 2025
+- **SUSU** adalah kategori revenue #1 (Rp 909M) tapi margin hanya 8,21%
+- **MINUMAN** margin tertinggi (15,39%) — kandidat utama untuk pertumbuhan profit
+- **189 produk** dijual di bawah HPP — kerugian langsung per transaksi
+- **1.454 dead stock** — modal tertahan tanpa putaran
+- **Senin–Selasa** adalah hari peak — ideal untuk jadwal restock dan promo
+- **QRIS** 14,9% dari transaksi — tren digital payment terus tumbuh
 
 ---
 
-## products_featured.csv
+## Deployment Dashboard
 
-| Column           | Description                   |
-| ---------------- | ----------------------------- |
-| profit_margin    | Product profit margin         |
-| low_stock_flag   | Low stock indicator           |
-| fast_moving_flag | Fast moving product indicator |
-| total_sales      | Total sales quantity          |
+Untuk deploy ke Streamlit Cloud:
 
----
-
-## daily_kpi.csv
-
-| Column             | Description              |
-| ------------------ | ------------------------ |
-| tanggal            | Date                     |
-| total_revenue      | Total daily revenue      |
-| total_profit       | Total daily profit       |
-| total_expense      | Total daily expense      |
-| total_transactions | Total daily transactions |
-| total_items_sold   | Total sold items         |
+1. Push project ke GitHub
+2. Login ke [share.streamlit.io](https://share.streamlit.io)
+3. Connect ke repository, set main file: `dashboard/app.py`
+4. Deploy
 
 ---
 
-# Conclusion
+## Checklist DS
 
-Project UMKM Analytics Dashboard berhasil membangun sistem analytics UMKM berbasis Data Science yang dapat membantu:
-
-* Monitoring bisnis
-* Analisis penjualan
-* Analisis profit
-* Monitoring inventory
-* Visualisasi performa bisnis secara interaktif
-
-Dashboard ini diharapkan dapat membantu UMKM mengambil keputusan bisnis berbasis data.
+- [x] Mengumpulkan & menganalisis permasalahan, menentukan solusi utama
+- [x] Mendefinisikan business questions yang dapat diukur (8 BQ)
+- [x] Gathering Data: dataset nyata dari inventori UMKM
+- [x] Assessing Data: identifikasi 7 jenis masalah data
+- [x] Cleaning Data: `scripts/cleaning.py`
+- [x] EDA dengan markdown & visualisasi: `notebooks/eda.ipynb`
+- [x] Visualisasi & explanatory analysis menjawab semua BQ
+- [x] Dashboard interaktif Streamlit: `dashboard/app.py`
+- [x] Data Dictionary lengkap: `data_dictionary.md`
+- [x] Dataset akhir siap pemodelan (no nulls, no leakage)
+- [x] Feature engineering: `scripts/feature_engineering.py`
+- [x] A/B Testing: `scripts/ab_testing.py`
+- [x] Laporan teknis PDF komprehensif
 
 ---
 
-# Author
+## Author
 
-UMKM Analytics Team
+UMKM Analytics Team — Data Science Role
