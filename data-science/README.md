@@ -39,16 +39,12 @@ data-science/
 │       ├── transactions.csv               ← Output generate_transactions.py
 │       ├── daily_kpi.csv                  ← Output generate_transactions.py
 │       ├── stock_after_transactions.csv   ← Output generate_transactions.py
-│       ├── products_featured.csv          ← Output feature_engineering.py
-│       ├── price_issues_report.csv        ← Output flag_price_issues.py
-│       └── metadata.json                  ← Output generate_metadata.py
+│       └── products_featured.csv          ← Output feature_engineering.py
 │
 ├── scripts/
 │   ├── cleaning.py                        ← Tahap 1: Data cleaning
 │   ├── generate_transactions.py           ← Tahap 2: Simulasi transaksi
 │   ├── feature_engineering.py            ← Tahap 3: Feature engineering
-│   ├── flag_price_issues.py              ← Tahap 4: Deteksi produk bermasalah
-│   ├── generate_metadata.py              ← Tahap 5: Data versioning
 │   └── ab_testing.py                     ← Opsional: A/B Testing promo
 │
 ├── notebooks/
@@ -70,8 +66,6 @@ data-science/
 1. cleaning.py              → products_clean.csv
 2. generate_transactions.py → transactions.csv, daily_kpi.csv, stock_after_transactions.csv
 3. feature_engineering.py   → products_featured.csv
-4. flag_price_issues.py     → products_featured.csv (+ kolom baru) + price_issues_report.csv
-5. generate_metadata.py     → metadata.json
 ```
 
 ---
@@ -86,8 +80,6 @@ pip install -r requirements.txt
 python scripts/cleaning.py
 python scripts/generate_transactions.py
 python scripts/feature_engineering.py
-python scripts/flag_price_issues.py
-python scripts/generate_metadata.py
 
 # 3. (Opsional) A/B Testing
 python scripts/ab_testing.py
@@ -102,10 +94,10 @@ streamlit run dashboard/app.py
 
 | File | Baris | Kolom | Keterangan |
 |------|-------|-------|-----------|
-| data_barang_30000.xls | ~48.000 | — | Raw data inventori UMKM |
-| products_clean.csv | 32.193 | 34 | Setelah cleaning (hpp>0 & harga>0) |
+| data_barang_30000.xls | ~32.193 | — | Raw data inventori UMKM |
+| products_clean.csv | 15.695 | 34 | Setelah cleaning (hpp>0 & harga>0) |
 | transactions.csv | 100.000 | 17 | Simulasi transaksi 1 tahun |
-| products_featured.csv | 32.193 | 41 | + fitur: margin, flags, price review |
+| products_featured.csv | 15.695 | 39 | + fitur: margin, flags, price review |
 | daily_kpi.csv | 366 | 6 | Agregasi KPI harian |
 
 Dokumentasi lengkap semua kolom → [`data_dictionary.md`](data_dictionary.md)
@@ -128,11 +120,11 @@ Dokumentasi lengkap semua kolom → [`data_dictionary.md`](data_dictionary.md)
 
 ## Hasil EDA — Insight Utama
 
-- **Revenue stabil** Rp 340–385M/bulan (Jun 2025–Apr 2026), puncak Jul 2025
+- **Revenue stabil** Rp 340–385M/bulan (Jun 2025–Apr 2026), puncak Jul 2025 (Rp 384,9M)
 - **SUSU** adalah kategori revenue #1 (Rp 909M) tapi margin hanya 8,21%
-- **MINUMAN** margin tertinggi (15,39%) — kandidat utama untuk pertumbuhan profit
-- **189 produk** dijual di bawah HPP — kerugian langsung per transaksi
-- **1.454 dead stock** — modal tertahan tanpa putaran
+- **MINUMAN** margin tertinggi di kategori utama — kandidat untuk pertumbuhan profit
+- **189 produk** dijual di bawah HPP — kerugian langsung per transaksi, perlu audit harga
+- **1.454 produk dead stock** — tidak pernah terjual, modal tertahan tanpa putaran
 - **Senin–Selasa** adalah hari peak — ideal untuk jadwal restock dan promo
 - **QRIS** 14,9% dari transaksi — tren digital payment terus tumbuh
 
