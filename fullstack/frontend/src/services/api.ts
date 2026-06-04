@@ -1,4 +1,4 @@
-const API_BASE = ""
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ""
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("auth_token")
