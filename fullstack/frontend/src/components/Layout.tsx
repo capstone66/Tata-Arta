@@ -1,12 +1,24 @@
-import { useState, useEffect } from "react"
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, ArrowRightLeft, Package, FileText,
-  BrainCircuit, LogOut, Menu, X, Sun, Moon, FolderOpen, Wallet, ShoppingCart,
-} from "lucide-react"
-import { useAuth } from "@/context/AuthContext"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+  LayoutDashboard,
+  ArrowRightLeft,
+  Package,
+  FileText,
+  BrainCircuit,
+  LogOut,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  FolderOpen,
+  Wallet,
+  ShoppingCart,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import logo from "../assets/logo.webp";
 
 const sidebarLinks = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -17,39 +29,39 @@ const sidebarLinks = [
   { to: "/categories", label: "Kategori", icon: FolderOpen },
   { to: "/budgets", label: "Anggaran", icon: Wallet },
   { to: "/ai-insights", label: "AI Insights", icon: BrainCircuit },
-]
+];
 
 export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("theme")
-      if (stored) return stored === "dark"
-      return window.matchMedia("(prefers-color-scheme: dark)").matches
+      const stored = localStorage.getItem("theme");
+      if (stored) return stored === "dark";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
-    return false
-  })
-  const { user, logout } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
+    return false;
+  });
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const root = document.documentElement
+    const root = document.documentElement;
     if (darkMode) {
-      root.classList.add("dark")
-      localStorage.setItem("theme", "dark")
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      root.classList.remove("dark")
-      localStorage.setItem("theme", "light")
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
-  }, [darkMode])
+  }, [darkMode]);
 
-  const toggleTheme = () => setDarkMode((prev) => !prev)
+  const toggleTheme = () => setDarkMode((prev) => !prev);
 
   const handleLogout = () => {
-    logout()
-    navigate("/login")
-  }
+    logout();
+    navigate("/login");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -65,13 +77,13 @@ export default function Layout() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar transition-transform duration-300 lg:static lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
           <img
-            src="/src/assets/logo.webp"
+            src={logo}
             alt="Tata Arta"
             className="h-8 w-8 rounded-lg object-cover"
           />
@@ -83,11 +95,11 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="flex-1 space-y-0.5 p-3 pt-5">
           {sidebarLinks.map((link, i) => {
-            const Icon = link.icon
+            const Icon = link.icon;
             const isActive =
               link.to === "/"
                 ? location.pathname === "/"
-                : location.pathname.startsWith(link.to)
+                : location.pathname.startsWith(link.to);
             return (
               <Link
                 key={link.to}
@@ -97,20 +109,24 @@ export default function Layout() {
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-sidebar-accent text-white shadow-sm"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-muted hover:text-sidebar-foreground/90"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-muted hover:text-sidebar-foreground/90",
                 )}
                 style={{ animationDelay: `${i * 30}ms` }}
               >
-                <Icon className={cn(
-                  "h-4 w-4 transition-colors",
-                  isActive ? "text-amber-400" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
-                )} />
+                <Icon
+                  className={cn(
+                    "h-4 w-4 transition-colors",
+                    isActive
+                      ? "text-amber-400"
+                      : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70",
+                  )}
+                />
                 {link.label}
                 {isActive && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400" />
                 )}
               </Link>
-            )
+            );
           })}
         </nav>
 
@@ -121,8 +137,12 @@ export default function Layout() {
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white/80">{user?.name}</p>
-              <p className="truncate text-xs text-sidebar-foreground/40">{user?.email}</p>
+              <p className="truncate text-sm font-medium text-white/80">
+                {user?.name}
+              </p>
+              <p className="truncate text-xs text-sidebar-foreground/40">
+                {user?.email}
+              </p>
             </div>
           </div>
         </div>
@@ -178,5 +198,5 @@ export default function Layout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
