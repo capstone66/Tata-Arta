@@ -6,7 +6,7 @@ Sistem analitik **end-to-end** berbasis Data Science untuk membantu pelaku UMKM 
 
 ## Problem Statement
 
-Pelaku UMKM tidak memiliki sistem yang mampu memantau performa bisnis secara real-time. Data penjualan, stok, dan keuntungan hanya tersimpan di spreadsheet tanpa analisis mendalam — keputusan bisnis diambil berdasarkan intuisi, bukan data.
+Tiadanya sistem pemantauan performa bisnis secara real-time membuat data penjualan, persediaan stok, dan laba-rugi UMKM hanya mengendap di dalam spreadsheet tanpa evaluasi mendalam. Akibatnya, pengambilan keputusan operasional dan strategis masih bersandar pada intuisi pelaku usaha, bukan berdasarkan validasi data.
 
 **Solusi:** Pipeline DS end-to-end dari raw data inventori → cleaned dataset → feature engineering → EDA → dashboard interaktif Streamlit.
 
