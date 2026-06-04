@@ -1,6 +1,6 @@
 # Tata Arta - Aplikasi Pengelolaan Keuangan UMKM berbasis AI
 
-Aplikasi fullstack untuk pencatatan transaksi, perhitungan laba/rugi, dan analisis keuangan dengan integrasi AI untuk UMKM (Usaha Mikro, Kecil, dan Menengah).
+Aplikasi full-stack yang dirancang untuk mengotomatisasi pembukuan transaksi, estimasi laba-rugi secara akurat, serta menyajikan evaluasi finansial UMKM melalui integrasi teknologi kecerdasan buatan
 
 ## Tech Stack
 
