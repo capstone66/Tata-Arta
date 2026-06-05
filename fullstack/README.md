@@ -357,17 +357,20 @@ POST /predict/all
 
 ### Backend (`backend/.env`)
 
+| Variable | Wajib | Default | Deskripsi |
+|----------|-------|---------|-----------|
+| `DATABASE_URL` | ✅ | - | PostgreSQL connection string |
+| `JWT_SECRET` | ✅ | - | Secret key untuk JWT token |
+| `AI_BASE_URL` | - | `http://localhost:8000` | URL AI microservice (Scan OCR, prediksi, dll) |
+| `PORT` | - | `3001` | Port server backend |
+
+### Frontend (`frontend/.env`)
+
 | Variable | Default | Deskripsi |
 |----------|---------|-----------|
-| `DATABASE_URL` | - | PostgreSQL connection string |
-| `PORT` | `3001` | Port server |
-| `JWT_SECRET` | `finance-app-secret-key-2024` | Secret key JWT |
-| `AI_BASE_URL` | `http://localhost:8000` | URL AI service |
+| `VITE_API_BASE_URL` | `""` (proxy Vite) | URL backend (kosongkan jika pakai proxy Vite) |
 
-### Frontend (Vite proxy)
-
-Konfigurasi proxy sudah ada di `vite.config.ts`:
-- `/api` → `http://localhost:3001`
+> **Catatan:** File `.env` frontend tidak wajib diisi saat development karena Vite proxy sudah mengarahkan `/api` → `http://localhost:3001` (lihat `vite.config.ts`). Di production (Vercel/Netlify), set `VITE_API_BASE_URL=https://api-domain.com`.
 
 ## Pengembangan
 
