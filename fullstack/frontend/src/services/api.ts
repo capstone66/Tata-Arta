@@ -625,7 +625,7 @@ export function scanReceipt(file: File): Promise<ScanReceiptResponse> {
   const formData = new FormData()
   formData.append("file", file)
   const token = localStorage.getItem("auth_token")
-  return fetch("/api/ai/ocr/scan-receipt", {
+  return fetch(`${API_BASE}/api/ai/ocr/scan-receipt`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
