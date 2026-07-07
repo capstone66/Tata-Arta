@@ -6,7 +6,7 @@ function getJwtSecret(): string {
   if (!process.env.JWT_SECRET) {
     console.warn("⚠️  JWT_SECRET tidak diatur di .env. Gunakan variabel lingkungan JWT_SECRET.");
   }
-  return process.env.JWT_SECRET || "finance-app-secret-key-2024";
+  return process.env.JWT_SECRET;
 }
 
 export interface AuthRequest extends Request {
