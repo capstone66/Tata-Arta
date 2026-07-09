@@ -38,7 +38,7 @@ app.use("/api/export", exportRoutes);
 app.use("/api/import", importRoutes);
 app.use("/api/sales", salesRoutes);
 
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ message: err.message });
     return;

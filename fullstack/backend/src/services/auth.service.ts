@@ -6,8 +6,9 @@ import { BadRequestError, UnauthorizedError } from "../utils/errors";
 export const authService = {
   async register(email: string, password: string, name: string) {
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) throw new BadRequestError("Email sudah terdaftar");
-
+    if (existing) {
+      throw new BadRequestError("Email sudah terdaftar");
+    }
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: { email, password: hashedPassword, name },
